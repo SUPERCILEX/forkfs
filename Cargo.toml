@@ -1,0 +1,21 @@
+[package]
+name = "forkfs"
+version = "0.1.0"
+authors = ["Alex Saveau <saveau.alexandre@gmail.com>"]
+edition = "2018"
+
+[dependencies]
+anyhow = "1.0.43"
+clap-verbosity-flag = "0.3.2"
+dirs = "3.0.2"
+exitcode = "1.1.2"
+log = "0.4.14"
+nix = "0.22.1"
+path-absolutize = "3.0.10"
+sanitize-filename = "0.3.0"
+simple_logger = "1.13.0"
+structopt = "0.3.23"
+
+[profile.release]
+lto = true
+codegen-units = 1
