@@ -6,7 +6,7 @@ pub type CliResult<T> = Result<T, CliExitError>;
 #[derive(Debug)]
 pub struct CliExitError {
     pub code: ExitCode,
-    pub wrapped: anyhow::Error,
+    pub wrapped: Option<anyhow::Error>,
 }
 
 pub trait CliExitAnyhowWrapper<T> {
@@ -17,7 +17,7 @@ impl<T> CliExitAnyhowWrapper<T> for Result<T> {
     fn with_code(self, error_code: i32) -> Result<T, CliExitError> {
         self.map_err(|e| CliExitError {
             code: error_code,
-            wrapped: e,
+            wrapped: Some(e),
         })
     }
 }
@@ -30,7 +30,7 @@ impl<T> CliExitNixWrapper<T> for nix::Result<T> {
     fn with_backing_code(self, message: impl Fn() -> String) -> Result<T, CliExitError> {
         self.map_err(|e| CliExitError {
             code: e as i32,
-            wrapped: anyhow!(e).context(message()),
+            wrapped: Some(anyhow!(e).context(message())),
         })
     }
 }

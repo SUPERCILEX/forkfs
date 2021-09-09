@@ -1,5 +1,4 @@
 use std::{
-    collections::HashMap,
     ffi::CString,
     fs,
     os::unix::prelude::OsStrExt,
@@ -23,10 +22,11 @@ use nix::{
     },
 };
 use path_absolutize::Absolutize;
+use radix_trie::Trie;
 
 use crate::{
     CliResult,
-    errors::{CliExitAnyhowWrapper, CliExitNixWrapper},
+    errors::{CliExitAnyhowWrapper, CliExitError, CliExitNixWrapper},
     interceptor::ExitSyscallOp::MutatingOpen,
 };
 
@@ -75,9 +75,17 @@ fn intercept_syscalls(child: Pid, fork_path: PathBuf) -> CliResult<()> {
     let mut exit_op: Option<ExitSyscallOp> = None;
 
     loop {
-        if wait_for_exit(child) {
-            // TODO return status code
-            break;
+        match wait_for_exit(child) {
+            Some(code) => {
+                if code != exitcode::OK {
+                    return Err(CliExitError {
+                        code,
+                        wrapped: None,
+                    });
+                }
+                break;
+            }
+            None => {}
         }
 
         match exit_op {
@@ -150,19 +158,14 @@ fn handle_enter_open(
     Ok(())
 }
 
-fn handle_exit_open(pid: Pid, redirected_fds: &mut HashMap<u64, PathBuf>, path: PathBuf) {
-    let regs = getregs(pid).unwrap();
-    redirected_fds.insert(regs.orig_rax, path);
-}
-
-fn wait_for_exit(pid: Pid) -> bool {
+fn wait_for_exit(pid: Pid) -> Option<i32> {
     let status = waitpid(pid, None).unwrap();
-    if let Exited(interrupt_pid, _) = status {
+    if let Exited(interrupt_pid, exitcode) = status {
         if pid == interrupt_pid {
-            return true;
+            return Some(exitcode);
         }
     }
-    return false;
+    return None;
 }
 
 fn mem_to_string(pid: Pid, mut ptr: u64) -> String {

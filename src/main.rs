@@ -103,7 +103,10 @@ struct RemoveForks {
 fn main() {
     match wrapped_main() {
         Err(error) => {
-            eprintln!("{:?}", error.wrapped);
+            match error.wrapped {
+                Some(e) => eprintln!("{:?}", e),
+                None => {}
+            }
             exit(error.code);
         }
         _ => (),
