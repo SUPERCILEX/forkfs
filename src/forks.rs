@@ -1,7 +1,7 @@
 use std::{
     fs::{read_dir, remove_dir_all},
     io,
-    io::ErrorKind,
+    io::{Error, ErrorKind},
     path::PathBuf,
     time::{SystemTime, UNIX_EPOCH},
 };
@@ -12,26 +12,28 @@ use log::info;
 use crate::{CliResult, errors::CliExitAnyhowWrapper};
 
 pub fn get_fork(fork: String) -> CliResult<PathBuf> {
-    let base_dir = forks_dir()?;
+    let mut fork_dir = forks_dir()?;
     if fork.is_empty() {
-        let mut new_fork;
         loop {
-            new_fork = base_dir.join(
+            fork_dir.push(
                 SystemTime::now()
                     .duration_since(UNIX_EPOCH)
                     .unwrap()
-                    .as_millis()
+                    .as_nanos()
                     .to_string(),
             );
-            if !new_fork.exists() {
+
+            if !fork_dir.exists() {
                 break;
             }
-        }
 
-        Ok(new_fork)
+            fork_dir.pop();
+        }
     } else {
-        Ok(base_dir.join(fork))
+        fork_dir.push(fork);
     }
+
+    Ok(fork_dir)
 }
 
 pub fn list_forks() -> CliResult<()> {
@@ -101,6 +103,7 @@ pub fn remove_forks(forks: Vec<String>) -> CliResult<()> {
         let fork_dir = forks_dir.join(&fork);
         info!("Deleting dir {:?}", fork_dir);
 
+        // TODO parallelize this
         let result = remove_dir_all(fork_dir);
 
         if result.is_err() {
@@ -126,14 +129,17 @@ pub fn remove_forks(forks: Vec<String>) -> CliResult<()> {
 }
 
 fn forks_dir() -> CliResult<PathBuf> {
-    Ok(forkfs_dir()?.join("forks"))
+    let mut fork_dir = forkfs_dir()?;
+    fork_dir.push("forks");
+    Ok(fork_dir)
 }
 
 fn forkfs_dir() -> CliResult<PathBuf> {
-    let config_dir = dirs::config_dir()
+    let mut config_dir = dirs::config_dir()
         .context("Failed to retrieve system configuration directory.")
-        .with_code(exitcode::CONFIG);
-    Ok(config_dir?.join("forkfs"))
+        .with_code(exitcode::CONFIG)?;
+    config_dir.push("forkfs");
+    Ok(config_dir)
 }
 
 trait IoResultUtils {
@@ -142,6 +148,6 @@ trait IoResultUtils {
 
 impl<T> IoResultUtils for Result<T, &io::Error> {
     fn does_not_exist(self) -> bool {
-        self.err().map(|e| e.kind()) == Some(ErrorKind::NotFound)
+        self.err().map(Error::kind) == Some(ErrorKind::NotFound)
     }
 }

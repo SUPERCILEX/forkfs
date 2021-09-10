@@ -101,20 +101,16 @@ struct RemoveForks {
 }
 
 fn main() {
-    match wrapped_main() {
-        Err(error) => {
-            match error.wrapped {
-                Some(e) => eprintln!("{:?}", e),
-                None => {}
-            }
-            exit(error.code);
+    if let Err(e) = wrapped_main() {
+        if let Some(source) = e.source {
+            eprintln!("{:?}", source)
         }
-        _ => (),
+        exit(e.code);
     }
 }
 
 fn wrapped_main() -> CliResult<()> {
-    let args: ForkFS = ForkFS::from_args();
+    let args = ForkFS::from_args();
     SimpleLogger::new()
         .with_level(args.verbose.log_level().unwrap().to_level_filter())
         .init()

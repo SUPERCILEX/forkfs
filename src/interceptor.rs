@@ -53,7 +53,7 @@ fn exec_program(args: Vec<String>) -> CliResult<()> {
         .map(|arg| CString::new(arg.as_bytes()).unwrap())
         .collect();
 
-    execvp(&arg_cstrs[0].clone(), &arg_cstrs)
+    execvp(&arg_cstrs[0], &arg_cstrs)
         .map(|_| ())
         .with_backing_code(|| {
             let command_reconstruction = arg_cstrs.iter().fold(
@@ -75,22 +75,15 @@ fn intercept_syscalls(child: Pid, fork_path: PathBuf) -> CliResult<()> {
     let mut exit_op: Option<ExitSyscallOp> = None;
 
     loop {
-        match wait_for_exit(child) {
-            Some(code) => {
-                if code != exitcode::OK {
-                    return Err(CliExitError {
-                        code,
-                        wrapped: None,
-                    });
-                }
-                break;
+        if let Some(code) = wait_for_exit(child) {
+            if code != exitcode::OK {
+                break Err(CliExitError { code, source: None });
             }
-            None => {}
+            break Ok(());
         }
 
         match exit_op {
-            Some(MutatingOpen(path)) => {
-                handle_exit_open(child, &mut redirected_fds, path);
+            Some(_) => {
                 exit_op = None;
             }
             None => {
@@ -107,8 +100,6 @@ fn intercept_syscalls(child: Pid, fork_path: PathBuf) -> CliResult<()> {
 
         syscall(child, None).unwrap();
     }
-
-    Ok(())
 }
 
 fn handle_enter_open(
@@ -127,7 +118,7 @@ fn handle_enter_open(
         .iter()
         .any(|flag| (flags & *flag) == *flag)
     {
-        let path_string = mem_to_string(pid, regs.rsi);
+        let path_string = read_string_mem(pid, regs.rsi);
         let path = Path::new(&path_string);
         let relocated = fork_path.join(path.absolutize().unwrap().strip_prefix("/").unwrap());
         let relocated_parent = relocated.parent().unwrap();
@@ -147,7 +138,7 @@ fn handle_enter_open(
         let mut nul_relocated = relocated.as_os_str().as_bytes().to_vec();
         nul_relocated.push(0);
         let new_filename_address = regs.rsp - STACK_RED_ZONE - nul_relocated.len() as u64;
-        bytes_to_mem(pid, new_filename_address, &nul_relocated);
+        write_mem(pid, new_filename_address, &nul_relocated);
 
         regs.rsi = new_filename_address;
         setregs(pid, regs).unwrap();
@@ -165,10 +156,10 @@ fn wait_for_exit(pid: Pid) -> Option<i32> {
             return Some(exitcode);
         }
     }
-    return None;
+    None
 }
 
-fn mem_to_string(pid: Pid, mut ptr: u64) -> String {
+fn read_string_mem(pid: Pid, mut ptr: u64) -> String {
     let mut chars = Vec::new();
     loop {
         let word = read(pid, ptr as AddressType).unwrap() as u64;
@@ -184,12 +175,12 @@ fn mem_to_string(pid: Pid, mut ptr: u64) -> String {
     }
 }
 
-fn bytes_to_mem(pid: Pid, mut ptr: u64, bytes: &[u8]) {
+fn write_mem(pid: Pid, mut ptr: u64, bytes: &[u8]) {
     let mut i = 0;
 
-    while i < bytes.len() - 8 {
+    while i <= bytes.len() - 8 {
         unsafe {
-            let word = *((i + bytes.as_ptr() as usize) as *const u64);
+            let word = *(bytes.as_ptr().add(i) as *const u64);
             write(pid, ptr as AddressType, word as AddressType).unwrap();
         }
 
@@ -207,7 +198,7 @@ fn bytes_to_mem(pid: Pid, mut ptr: u64, bytes: &[u8]) {
         }
 
         let existing_mem = read(pid, ptr as AddressType).unwrap() as u64;
-        word |= existing_mem & (!0u64 << j * 8);
+        word |= existing_mem & (!0u64 << (j * 8));
         unsafe {
             write(pid, ptr as AddressType, word as AddressType).unwrap();
         }
