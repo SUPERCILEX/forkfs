@@ -1,8 +1,4 @@
-use std::{
-    ffi::CString,
-    os::unix::prelude::OsStrExt,
-    path::PathBuf,
-};
+use std::{ffi::CString, os::unix::prelude::OsStrExt, path::PathBuf};
 
 use libc::user_regs_struct;
 use nix::{
@@ -22,7 +18,7 @@ use nix::{
 use crate::{
     CliResult,
     divergence::FileChanges,
-    errors::{CliExitError, CliExitNixWrapper},
+    errors::{CliExitError, CliExitNixWrapper, IoResultUtils},
     interceptor::ExitSyscallOp::MutatingOpen,
 };
 
@@ -114,9 +110,15 @@ fn handle_enter_open(
     }
 
     let path = PathBuf::from(read_string_mem(pid, regs.rsi));
+
+    let is_regular_file = || {
+        let result = path.metadata();
+        result.as_ref().does_not_exist()
+            || result.map(|metadata| metadata.is_file()).ok() == Some(true)
+    };
     let existing_change = changes.includes(&path);
     let can_modify = (regs.rdx as i32).has_any_flags(&MUTATING_OPEN_FLAGS);
-    if existing_change || can_modify {
+    if (existing_change || can_modify) && is_regular_file() {
         let relocated = if existing_change {
             changes.destination(&path)
         } else {
