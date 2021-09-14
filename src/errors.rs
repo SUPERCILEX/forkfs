@@ -1,3 +1,8 @@
+use std::{
+    io,
+    io::{Error, ErrorKind},
+};
+
 use anyhow::{anyhow, Result};
 use exitcode::ExitCode;
 
@@ -32,5 +37,15 @@ impl<T> CliExitNixWrapper<T> for nix::Result<T> {
             code: e as i32,
             source: Some(anyhow!(e).context(message())),
         })
+    }
+}
+
+pub trait IoResultUtils {
+    fn does_not_exist(self) -> bool;
+}
+
+impl<T> IoResultUtils for Result<T, &io::Error> {
+    fn does_not_exist(self) -> bool {
+        self.err().map(Error::kind) == Some(ErrorKind::NotFound)
     }
 }

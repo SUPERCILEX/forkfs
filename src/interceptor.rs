@@ -1,13 +1,10 @@
 use std::{
     ffi::CString,
-    fs,
     os::unix::prelude::OsStrExt,
-    path::{Path, PathBuf},
+    path::PathBuf,
 };
 
-use anyhow::Context;
 use libc::user_regs_struct;
-use log::info;
 use nix::{
     libc,
     NixPath,
@@ -21,16 +18,15 @@ use nix::{
         Pid,
     },
 };
-use path_absolutize::Absolutize;
-use radix_trie::Trie;
 
 use crate::{
     CliResult,
-    errors::{CliExitAnyhowWrapper, CliExitError, CliExitNixWrapper},
+    divergence::FileChanges,
+    errors::{CliExitError, CliExitNixWrapper},
     interceptor::ExitSyscallOp::MutatingOpen,
 };
 
-const MUTATING_OPEN_FLAGS: [u64; 2] = [libc::O_CREAT as u64, libc::O_TRUNC as u64];
+const MUTATING_OPEN_FLAGS: [i32; 4] = [libc::O_CREAT, libc::O_TRUNC, libc::O_WRONLY, libc::O_RDWR];
 const STACK_RED_ZONE: u64 = 128;
 
 enum ExitSyscallOp {
@@ -41,7 +37,11 @@ pub fn run_intercepted_program(program: Vec<String>, session: PathBuf) -> CliRes
     let pid = unsafe { fork() }.unwrap();
     match pid {
         Child => exec_program(program),
-        Parent { child } => intercept_syscalls(child, session),
+        Parent { child } => {
+            let mut changes = FileChanges::new(session.with_extension("changes"), session);
+            changes.restore_from_disk()?;
+            intercept_syscalls(child, changes)
+        }
     }
 }
 
@@ -70,8 +70,7 @@ fn exec_program(args: Vec<String>) -> CliResult<()> {
         })
 }
 
-fn intercept_syscalls(child: Pid, fork_path: PathBuf) -> CliResult<()> {
-    let mut redirected_fds = HashMap::new(); // TODO needed?
+fn intercept_syscalls(child: Pid, mut changes: FileChanges) -> CliResult<()> {
     let mut exit_op: Option<ExitSyscallOp> = None;
 
     loop {
@@ -88,8 +87,9 @@ fn intercept_syscalls(child: Pid, fork_path: PathBuf) -> CliResult<()> {
             }
             None => {
                 let regs = getregs(child).unwrap();
-                if regs.orig_rax == libc::SYS_openat as u64 {
-                    handle_enter_open(child, &fork_path, regs, &mut exit_op)?;
+                match regs.orig_rax as i64 {
+                    libc::SYS_openat => handle_enter_open(child, &mut changes, regs, &mut exit_op)?,
+                    _ => {}
                 }
 
                 // TODO handle open, unlink*, mkdir*, rename*, rmdir*, creat*, link*, symlink*,
@@ -104,7 +104,7 @@ fn intercept_syscalls(child: Pid, fork_path: PathBuf) -> CliResult<()> {
 
 fn handle_enter_open(
     pid: Pid,
-    fork_path: &PathBuf,
+    changes: &mut FileChanges,
     mut regs: user_regs_struct,
     exit_op: &mut Option<ExitSyscallOp>,
 ) -> CliResult<()> {
@@ -113,27 +113,15 @@ fn handle_enter_open(
         // Maybe use readlink on /proc/$X/fd/$Y
     }
 
-    let flags = regs.rdx;
-    if MUTATING_OPEN_FLAGS
-        .iter()
-        .any(|flag| (flags & *flag) == *flag)
-    {
-        let path_string = read_string_mem(pid, regs.rsi);
-        let path = Path::new(&path_string);
-        let relocated = fork_path.join(path.absolutize().unwrap().strip_prefix("/").unwrap());
-        let relocated_parent = relocated.parent().unwrap();
-
-        info!("Rewrote path {:?} to {:?}", path_string, relocated);
-
-        fs::create_dir_all(relocated_parent)
-            .context(format!("Failed to create directory {:?}", relocated_parent))
-            .with_code(exitcode::IOERR)?;
-        if !relocated.exists() && path.exists() {
-            info!("Copying file {:?} to {:?}", path, relocated);
-            fs::copy(path, &relocated)
-                .context(format!("Copy from {:?} to {:?} failed", path, relocated))
-                .with_code(exitcode::IOERR)?;
-        }
+    let path = PathBuf::from(read_string_mem(pid, regs.rsi));
+    let existing_change = changes.includes(&path);
+    let can_modify = (regs.rdx as i32).has_any_flags(&MUTATING_OPEN_FLAGS);
+    if existing_change || can_modify {
+        let relocated = if existing_change {
+            changes.destination(&path)
+        } else {
+            changes.on_file_modified(&path)?
+        };
 
         let mut nul_relocated = relocated.as_os_str().as_bytes().to_vec();
         nul_relocated.push(0);
@@ -143,7 +131,7 @@ fn handle_enter_open(
         regs.rsi = new_filename_address;
         setregs(pid, regs).unwrap();
 
-        *exit_op = Option::from(MutatingOpen(relocated));
+        *exit_op = Some(MutatingOpen(relocated));
     }
 
     Ok(())
@@ -202,5 +190,15 @@ fn write_mem(pid: Pid, mut ptr: u64, bytes: &[u8]) {
         unsafe {
             write(pid, ptr as AddressType, word as AddressType).unwrap();
         }
+    }
+}
+
+trait FlagUtils {
+    fn has_any_flags(self, flags: &[i32]) -> bool;
+}
+
+impl FlagUtils for i32 {
+    fn has_any_flags(self, flags: &[i32]) -> bool {
+        return flags.iter().any(|flag| (self & *flag) == *flag);
     }
 }

@@ -1,15 +1,16 @@
 use std::{
-    fs::{read_dir, remove_dir_all},
-    io,
-    io::{Error, ErrorKind},
+    fs::{read_dir, remove_dir_all, remove_file},
     path::PathBuf,
     time::{SystemTime, UNIX_EPOCH},
 };
 
-use anyhow::{anyhow, Context, Result};
+use anyhow::{anyhow, Context};
 use log::info;
 
-use crate::{CliResult, errors::CliExitAnyhowWrapper};
+use crate::{
+    CliResult,
+    errors::{CliExitAnyhowWrapper, IoResultUtils},
+};
 
 pub fn get_fork(fork: String) -> CliResult<PathBuf> {
     let mut fork_dir = forks_dir()?;
@@ -51,17 +52,23 @@ pub fn list_forks() -> CliResult<()> {
     }
 
     let forks = forks_result
-        .context(format!("Failed to list files in dir: {:?}", forks_dir))
+        .with_context(|| format!("Failed to list files in dir: {:?}", forks_dir))
         .with_code(exitcode::IOERR)?;
 
     let mut had_entries = false;
     for fork in forks {
         let entry = fork
-            .context(format!("Failed to read entry in dir: {:?}", forks_dir))
+            .with_context(|| format!("Failed to read entry in dir: {:?}", forks_dir))
             .with_code(exitcode::IOERR)?;
 
+        let file_name = entry.file_name();
+        let file_name = file_name.to_str().unwrap();
+        if file_name.ends_with(".changes") {
+            continue;
+        }
+
         had_entries = true;
-        print!("{} ", entry.file_name().to_str().unwrap());
+        print!("{} ", file_name);
     }
 
     if had_entries {
@@ -93,7 +100,7 @@ pub fn remove_forks(forks: Vec<String>) -> CliResult<()> {
             Ok(())
         } else {
             result
-                .context(format!("Failed to delete {:?}", forks_dir))
+                .with_context(|| format!("Failed to delete {:?}", forks_dir))
                 .with_code(exitcode::IOERR)
         };
     }
@@ -101,10 +108,11 @@ pub fn remove_forks(forks: Vec<String>) -> CliResult<()> {
     let mut had_errors = false;
     for fork in forks {
         let fork_dir = forks_dir.join(&fork);
-        info!("Deleting dir {:?}", fork_dir);
+        let log_file = fork_dir.with_extension("changes");
+        info!("Deleting dir {:?} and file {:?}", fork_dir, log_file);
 
         // TODO parallelize this
-        let result = remove_dir_all(fork_dir);
+        let result = remove_dir_all(&fork_dir).and(remove_file(log_file));
 
         if result.is_err() {
             had_errors = true;
@@ -114,7 +122,7 @@ pub fn remove_forks(forks: Vec<String>) -> CliResult<()> {
             } else {
                 eprintln!(
                     "{:?}",
-                    result.context(format!("Failed to delete {:?}", forks_dir))
+                    result.with_context(|| format!("Failed to delete {:?}", forks_dir))
                 );
             }
         }
@@ -140,14 +148,4 @@ fn forkfs_dir() -> CliResult<PathBuf> {
         .with_code(exitcode::CONFIG)?;
     config_dir.push("forkfs");
     Ok(config_dir)
-}
-
-trait IoResultUtils {
-    fn does_not_exist(self) -> bool;
-}
-
-impl<T> IoResultUtils for Result<T, &io::Error> {
-    fn does_not_exist(self) -> bool {
-        self.err().map(Error::kind) == Some(ErrorKind::NotFound)
-    }
 }

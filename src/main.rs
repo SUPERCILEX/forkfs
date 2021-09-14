@@ -11,6 +11,7 @@ use crate::{
     interceptor::run_intercepted_program,
 };
 
+mod divergence;
 mod errors;
 mod forks;
 mod interceptor;
