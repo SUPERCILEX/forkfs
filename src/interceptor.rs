@@ -1,5 +1,10 @@
-use std::{ffi::CString, os::unix::prelude::OsStrExt, path::PathBuf};
+use std::{
+    ffi::CString,
+    fs,
+    path::{Path, PathBuf},
+};
 
+use anyhow::Context;
 use libc::user_regs_struct;
 use nix::{
     libc,
@@ -18,15 +23,15 @@ use nix::{
 use crate::{
     CliResult,
     divergence::FileChanges,
-    errors::{CliExitError, CliExitNixWrapper, IoResultUtils},
-    interceptor::ExitSyscallOp::MutatingOpen,
+    errors::{CliExitAnyhowWrapper, CliExitError, CliExitNixWrapper, IoResultUtils},
+    interceptor::ExitSyscallOp::Ignore,
 };
 
 const MUTATING_OPEN_FLAGS: [i32; 4] = [libc::O_CREAT, libc::O_TRUNC, libc::O_WRONLY, libc::O_RDWR];
 const STACK_RED_ZONE: u64 = 128;
 
 enum ExitSyscallOp {
-    MutatingOpen(PathBuf),
+    Ignore,
 }
 
 pub fn run_intercepted_program(program: Vec<String>, session: PathBuf) -> CliResult<()> {
@@ -85,12 +90,17 @@ fn intercept_syscalls(child: Pid, mut changes: FileChanges) -> CliResult<()> {
                 let regs = getregs(child).unwrap();
                 match regs.orig_rax as i64 {
                     libc::SYS_openat => handle_enter_open(child, &mut changes, regs, &mut exit_op)?,
+                    libc::SYS_newfstatat => {
+                        handle_enter_newfstatat(child, &mut changes, regs, &mut exit_op)?
+                    }
+                    libc::SYS_faccessat2 => {
+                        handle_enter_faccessat2(child, &mut changes, regs, &mut exit_op)?
+                    }
+                    libc::SYS_unlinkat => {
+                        handle_enter_unlink(child, &mut changes, regs, &mut exit_op)?
+                    }
                     _ => {}
                 }
-
-                // TODO handle open, unlink*, mkdir*, rename*, rmdir*, creat*, link*, symlink*,
-                //  chmod*, chown*, lchown*, utime*, mknod*, *xattr*, utimes*, inotify_add_watch*,
-                //  futimesat, mmap*
             }
         }
 
@@ -104,12 +114,7 @@ fn handle_enter_open(
     mut regs: user_regs_struct,
     exit_op: &mut Option<ExitSyscallOp>,
 ) -> CliResult<()> {
-    if regs.rdi as i32 != libc::AT_FDCWD {
-        todo!("Handle params other than AT_FDCWD");
-        // Maybe use readlink on /proc/$X/fd/$Y
-    }
-
-    let path = PathBuf::from(read_string_mem(pid, regs.rsi));
+    let path = read_path_from_v2_syscall(pid, regs)?;
 
     let is_regular_file = || {
         let result = path.metadata();
@@ -125,16 +130,64 @@ fn handle_enter_open(
             changes.on_file_modified(&path)?
         };
 
-        let mut nul_relocated = relocated.as_os_str().as_bytes().to_vec();
-        nul_relocated.push(0);
-        let new_filename_address = regs.rsp - STACK_RED_ZONE - nul_relocated.len() as u64;
-        write_mem(pid, new_filename_address, &nul_relocated);
+        write_path_mem(pid, &mut regs, &relocated);
 
-        regs.rsi = new_filename_address;
-        setregs(pid, regs).unwrap();
-
-        *exit_op = Some(MutatingOpen(relocated));
+        *exit_op = Some(Ignore);
     }
+
+    Ok(())
+}
+
+fn handle_enter_newfstatat(
+    pid: Pid,
+    changes: &mut FileChanges,
+    mut regs: user_regs_struct,
+    exit_op: &mut Option<ExitSyscallOp>,
+) -> CliResult<()> {
+    let path = read_path_from_v2_syscall(pid, regs)?;
+
+    if changes.includes(&path) {
+        write_path_mem(pid, &mut regs, &changes.destination(&path));
+    }
+
+    *exit_op = Some(Ignore);
+
+    Ok(())
+}
+
+fn handle_enter_faccessat2(
+    pid: Pid,
+    changes: &mut FileChanges,
+    mut regs: user_regs_struct,
+    exit_op: &mut Option<ExitSyscallOp>,
+) -> CliResult<()> {
+    let path = read_path_from_v2_syscall(pid, regs)?;
+
+    if changes.includes(&path) {
+        write_path_mem(pid, &mut regs, &changes.destination(&path));
+    }
+
+    *exit_op = Some(Ignore);
+
+    Ok(())
+}
+
+fn handle_enter_unlink(
+    pid: Pid,
+    changes: &mut FileChanges,
+    mut regs: user_regs_struct,
+    exit_op: &mut Option<ExitSyscallOp>,
+) -> CliResult<()> {
+    let path = read_path_from_v2_syscall(pid, regs)?;
+    let relocated = if changes.includes(&path) {
+        changes.destination(&path)
+    } else {
+        changes.on_file_removed(&path)?
+    };
+
+    write_path_mem(pid, &mut regs, &relocated);
+
+    *exit_op = Some(Ignore);
 
     Ok(())
 }
@@ -193,6 +246,29 @@ fn write_mem(pid: Pid, mut ptr: u64, bytes: &[u8]) {
             write(pid, ptr as AddressType, word as AddressType).unwrap();
         }
     }
+}
+
+fn read_path_from_v2_syscall(pid: Pid, regs: user_regs_struct) -> CliResult<PathBuf> {
+    let mut path = PathBuf::from(read_string_mem(pid, regs.rsi));
+    if !path.is_absolute() && regs.rdi as i32 != libc::AT_FDCWD {
+        let link = format!("/proc/{}/fd/{}", pid, regs.rdi);
+        path = fs::read_link(&link)
+            .with_context(|| format!("Failed to read symlink {:?}", link))
+            .with_code(exitcode::IOERR)?;
+    }
+    Ok(path)
+}
+
+fn write_path_mem(pid: Pid, regs: &mut user_regs_struct, relocated: &Path) {
+    let mut nul_relocated = Vec::with_capacity(relocated.len() + 1);
+    nul_relocated.extend_from_slice(relocated.to_str().unwrap().as_bytes());
+    nul_relocated.push(0);
+
+    let new_filename_address = regs.rsp - STACK_RED_ZONE - nul_relocated.len() as u64;
+    write_mem(pid, new_filename_address, &nul_relocated);
+
+    regs.rsi = new_filename_address;
+    setregs(pid, *regs).unwrap();
 }
 
 trait FlagUtils {

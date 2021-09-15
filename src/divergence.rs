@@ -1,6 +1,6 @@
 use std::{
     fs,
-    fs::OpenOptions,
+    fs::{File, OpenOptions},
     io::{BufRead, BufReader, Write},
     path::{Path, PathBuf},
 };
@@ -8,10 +8,11 @@ use std::{
 use anyhow::{anyhow, Context};
 use derive_new::new;
 use log::info;
+use nix::NixPath;
 use path_absolutize::Absolutize;
 use radix_trie::{Trie, TrieCommon};
 
-use crate::errors::{CliExitAnyhowWrapper, CliResult, IoResultUtils};
+use crate::errors::{CliExitAnyhowWrapper, CliExitError, CliResult, IoResultUtils};
 
 #[derive(new, Debug)]
 pub struct FileChanges {
@@ -21,7 +22,7 @@ pub struct FileChanges {
     root: PathBuf,
 }
 
-#[derive(Debug)]
+#[derive(Debug, Copy, Clone)]
 pub enum ChangeType {
     Modify,
     Remove,
@@ -85,6 +86,18 @@ impl FileChanges {
     }
 
     pub fn on_file_modified(&mut self, file: &Path) -> CliResult<PathBuf> {
+        self.on_file_changed(file, ChangeType::Modify)
+    }
+
+    pub fn on_file_removed(&mut self, file: &Path) -> CliResult<PathBuf> {
+        self.on_file_changed(file, ChangeType::Remove)
+    }
+
+    fn on_file_changed(
+        &mut self,
+        file: &Path,
+        change: ChangeType,
+    ) -> Result<PathBuf, CliExitError> {
         let relocated = self.destination(file);
         let relocated_parent = relocated.parent().unwrap();
 
@@ -94,26 +107,38 @@ impl FileChanges {
             .with_code(exitcode::IOERR)?;
 
         info!("Rewriting path {:?} to {:?}", file, relocated);
-        self.log_modification(file)?;
+        self.log_modification(file, change)?;
 
         if !relocated.exists() && file.exists() {
             info!("Copying file {:?} to {:?}", file, relocated);
-            fs::copy(file, &relocated)
-                .with_context(|| format!("Copy from {:?} to {:?} failed", file, relocated))
-                .with_code(exitcode::IOERR)?;
+            match change {
+                ChangeType::Modify => {
+                    fs::copy(file, &relocated)
+                        .with_context(|| format!("Copy from {:?} to {:?} failed", file, relocated))
+                        .with_code(exitcode::IOERR)?;
+                }
+                ChangeType::Remove => {
+                    File::create(&relocated)
+                        .with_context(|| format!("Failed to create file {:?}", relocated))
+                        .with_code(exitcode::IOERR)?;
+                }
+            }
         }
 
         Ok(relocated)
     }
 
-    fn log_modification(&mut self, file: &Path) -> CliResult<()> {
-        assert!(self
-            .changes
-            .insert(file.to_path_buf(), ChangeType::Modify)
-            .is_none());
+    fn log_modification(&mut self, file: &Path, change: ChangeType) -> CliResult<()> {
+        self.changes.insert(file.to_path_buf(), change);
 
-        let mut buf = Vec::with_capacity(2 + file.as_os_str().len() + 1);
-        buf.extend_from_slice("M ".as_bytes());
+        let mut buf = Vec::with_capacity(2 + file.len() + 1);
+        buf.extend_from_slice(
+            match change {
+                ChangeType::Modify => "M ",
+                ChangeType::Remove => "R ",
+            }
+                .as_bytes(),
+        );
         buf.extend_from_slice(file.to_str().unwrap().as_bytes());
         buf.push(b'\n');
 
