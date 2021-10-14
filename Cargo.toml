@@ -5,18 +5,20 @@ authors = ["Alex Saveau <saveau.alexandre@gmail.com>"]
 edition = "2018"
 
 [dependencies]
-anyhow = "1.0.43"
+anyhow = "1.0.44"
 clap-verbosity-flag = "0.3.2"
 derive-new = "0.5.9"
-dirs = "3.0.2"
+dirs = "4.0.0"
 exitcode = "1.1.2"
 log = "0.4.14"
-nix = "0.22.1"
-path-absolutize = "3.0.10"
+nix = "0.23.0"
+path-absolutize = "3.0.11"
 radix_trie = "0.2.1"
 sanitize-filename = "0.3.0"
 simple_logger = "1.13.0"
 structopt = "0.3.23"
+futures = "0.3.17"
+tokio = { version = "1.12.0", features = ["full"] }
 
 [profile.release]
 lto = true
