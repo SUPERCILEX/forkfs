@@ -104,7 +104,7 @@ struct RemoveForks {
 fn main() {
     if let Err(e) = wrapped_main() {
         if let Some(source) = e.source {
-            eprintln!("{:?}", source)
+            eprintln!("{:?}", source);
         }
         exit(e.code);
     }

@@ -99,7 +99,8 @@ fn intercept_syscalls(child: Pid, mut changes: FileChanges) -> CliResult<()> {
                     libc::SYS_unlinkat => {
                         handle_enter_unlink(child, &mut changes, regs, &mut exit_op)?
                     }
-                    _ => {}
+                    // TODO support fork
+                    _ => exit_op = Some(Ignore),
                 }
             }
         }

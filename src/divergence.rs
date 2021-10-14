@@ -113,11 +113,14 @@ impl FileChanges {
             info!("Copying file {:?} to {:?}", file, relocated);
             match change {
                 ChangeType::Modify => {
+                    // TODO add tests validating correct behavior
+                    //  (in particular what happens in edge cases like trying to open a directory)
                     fs::copy(file, &relocated)
                         .with_context(|| format!("Copy from {:?} to {:?} failed", file, relocated))
                         .with_code(exitcode::IOERR)?;
                 }
                 ChangeType::Remove => {
+                    // TODO don't create file since we know it's going to immediately be deleted.
                     File::create(&relocated)
                         .with_context(|| format!("Failed to create file {:?}", relocated))
                         .with_code(exitcode::IOERR)?;
