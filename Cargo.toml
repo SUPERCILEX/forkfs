@@ -3,6 +3,10 @@ name = "forkfs"
 version = "0.1.0"
 authors = ["Alex Saveau <saveau.alexandre@gmail.com>"]
 edition = "2018"
+description = "ForkFS allows you to isolate a process's changes to your files, sandboxing those changes into another directory."
+repository = "https://github.com/SUPERCILEX/forkfs"
+keywords = ["tools", "isolate", "files"]
+categories = ["command-line-utilities", "development-tools", "development-tools::debugging", "filesystem"]
 
 [dependencies]
 anyhow = "1.0.44"
