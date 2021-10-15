@@ -1,11 +1,13 @@
 use std::{
-    fs::{read_dir, remove_dir_all, remove_file},
+    fs::read_dir,
     path::PathBuf,
     time::{SystemTime, UNIX_EPOCH},
 };
 
 use anyhow::{anyhow, Context};
+use futures::future::join_all;
 use log::info;
+use tokio::runtime::Builder;
 
 use crate::{
     CliResult,
@@ -89,12 +91,21 @@ pub fn apply_fork(_fork: String) -> CliResult<()> {
 }
 
 pub fn remove_forks(forks: Vec<String>) -> CliResult<()> {
+    let runtime = Builder::new_current_thread()
+        .build()
+        .with_context(|| "Failed to create tokio runtime")
+        .with_code(exitcode::OSERR)?;
+
+    runtime.block_on(async { remove_forks_async(forks).await })
+}
+
+async fn remove_forks_async(forks: Vec<String>) -> CliResult<()> {
     let forks_dir = forks_dir()?;
 
     if forks.is_empty() {
         info!("Deleting directory {:?}", forks_dir);
 
-        let result = remove_dir_all(&forks_dir);
+        let result = tokio::fs::remove_dir_all(&forks_dir).await;
         return if result.as_ref().does_not_exist() {
             info!("No forks to remove");
             Ok(())
@@ -105,35 +116,39 @@ pub fn remove_forks(forks: Vec<String>) -> CliResult<()> {
         };
     }
 
-    let mut had_errors = false;
+    let mut deletions = Vec::with_capacity(forks.len());
     for fork in forks {
-        let fork_dir = forks_dir.join(&fork);
-        let log_file = fork_dir.with_extension("changes");
-        info!("Deleting dir {:?} and file {:?}", fork_dir, log_file);
+        let forks_dir = forks_dir.clone();
 
-        // TODO parallelize this
-        let result = remove_dir_all(&fork_dir).and(remove_file(log_file));
+        deletions.push(tokio::spawn(async move {
+            let fork_dir = forks_dir.join(&fork);
+            info!("Deleting dir {:?}", fork_dir);
 
-        if result.is_err() {
-            had_errors = true;
+            let result = tokio::fs::remove_dir_all(&fork_dir).await;
+            if result.is_err() {
+                if result.as_ref().does_not_exist() {
+                    eprintln!("Fork '{}' not found", fork);
+                } else {
+                    eprintln!(
+                        "{:?}",
+                        result.with_context(|| format!("Failed to delete {:?}", forks_dir))
+                    );
+                }
 
-            if result.as_ref().does_not_exist() {
-                eprintln!("Fork '{}' not found", fork);
+                Err(())
             } else {
-                eprintln!(
-                    "{:?}",
-                    result.with_context(|| format!("Failed to delete {:?}", forks_dir))
-                );
+                Ok(())
             }
+        }));
+    }
+
+    for result in join_all(deletions).await {
+        if result.map_err(|_| ()).and_then(|r| r).is_err() {
+            println!();
+            return Err(anyhow!("Failed to delete some forks")).with_code(exitcode::IOERR);
         }
     }
-
-    if had_errors {
-        println!();
-        Err(anyhow!("Failed to delete some forks")).with_code(exitcode::IOERR)
-    } else {
-        Ok(())
-    }
+    Ok(())
 }
 
 fn forks_dir() -> CliResult<PathBuf> {

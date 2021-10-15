@@ -39,7 +39,7 @@ pub fn run_intercepted_program(program: Vec<String>, session: PathBuf) -> CliRes
     match pid {
         Child => exec_program(program),
         Parent { child } => {
-            let mut changes = FileChanges::new(session.with_extension("changes"), session);
+            let mut changes = FileChanges::new(session.join("changes.log"), session);
             changes.restore_from_disk()?;
             intercept_syscalls(child, changes)
         }
