@@ -34,6 +34,7 @@ struct ForkFS {
 enum Cmd {
     /// Run a program in a forked file system
     Run(Run),
+
     /// Manage forked file systems
     Forks(Forks),
 }
@@ -48,6 +49,7 @@ struct Run {
     validator = validate_fork_name
     )]
     fork: String,
+
     /// The program to run
     #[structopt(required = true)]
     program: Vec<String>,
@@ -63,10 +65,13 @@ struct Forks {
 enum ForksCmd {
     /// List available forks
     List(ListForks),
+
     /// Diff a forked file system's changes with ground truth (the actual FS)
     Diff(DiffFork),
+
     /// Apply the changes from a fork to ground truth (the actual FS)
     Apply(ApplyFork),
+
     /// Delete forks
     Remove(RemoveForks),
 }
@@ -91,6 +96,7 @@ struct RemoveForks {
     /// Remove all forks
     #[structopt(long = "all", short = "a")]
     all: bool,
+
     /// The FS fork(s) to remove
     #[structopt(
     conflicts_with = "all",
