@@ -96,7 +96,7 @@ pub fn remove_forks(forks: Vec<String>) -> CliResult<()> {
         .with_context(|| "Failed to create tokio runtime")
         .with_code(exitcode::OSERR)?;
 
-    runtime.block_on(async { remove_forks_async(forks).await })
+    runtime.block_on(remove_forks_async(forks))
 }
 
 async fn remove_forks_async(forks: Vec<String>) -> CliResult<()> {
