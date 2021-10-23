@@ -92,7 +92,7 @@ struct ApplyFork {
 }
 
 #[derive(Debug, StructOpt)]
-struct RemoveForks {
+pub struct RemoveForks {
     /// Remove all forks
     #[structopt(long = "all", short = "a")]
     all: bool,
@@ -144,7 +144,7 @@ fn forks(options: Forks) -> CliResult<()> {
         None | Some(ForksCmd::List(_)) => list_forks(),
         Some(ForksCmd::Diff(options)) => diff_fork(options.fork),
         Some(ForksCmd::Apply(options)) => apply_fork(options.fork),
-        Some(ForksCmd::Remove(options)) => remove_forks(options.forks),
+        Some(ForksCmd::Remove(options)) => remove_forks(options),
     }
 }
 

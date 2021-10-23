@@ -11,7 +11,7 @@ use tokio::runtime::Builder;
 
 use crate::{
     CliResult,
-    errors::{CliExitAnyhowWrapper, IoResultUtils},
+    errors::{CliExitAnyhowWrapper, IoResultUtils}, RemoveForks,
 };
 
 pub fn get_fork(fork: String) -> CliResult<PathBuf> {
@@ -90,19 +90,19 @@ pub fn apply_fork(_fork: String) -> CliResult<()> {
     todo!()
 }
 
-pub fn remove_forks(forks: Vec<String>) -> CliResult<()> {
+pub fn remove_forks(remove: RemoveForks) -> CliResult<()> {
     let runtime = Builder::new_current_thread()
         .build()
         .with_context(|| "Failed to create tokio runtime")
         .with_code(exitcode::OSERR)?;
 
-    runtime.block_on(remove_forks_async(forks))
+    runtime.block_on(remove_forks_async(remove))
 }
 
-async fn remove_forks_async(forks: Vec<String>) -> CliResult<()> {
+async fn remove_forks_async(remove: RemoveForks) -> CliResult<()> {
     let forks_dir = forks_dir()?;
 
-    if forks.is_empty() {
+    if remove.all {
         info!("Deleting directory {:?}", forks_dir);
 
         let result = tokio::fs::remove_dir_all(&forks_dir).await;
@@ -116,8 +116,8 @@ async fn remove_forks_async(forks: Vec<String>) -> CliResult<()> {
         };
     }
 
-    let mut deletions = Vec::with_capacity(forks.len());
-    for fork in forks {
+    let mut deletions = Vec::with_capacity(remove.forks.len());
+    for fork in remove.forks {
         let forks_dir = forks_dir.clone();
 
         deletions.push(tokio::spawn(async move {
