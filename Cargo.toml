@@ -2,7 +2,7 @@
 name = "forkfs"
 version = "0.1.0"
 authors = ["Alex Saveau <saveau.alexandre@gmail.com>"]
-edition = "2018"
+edition = "2021"
 description = "ForkFS allows you to isolate a process's changes to your files, sandboxing those changes into another directory."
 repository = "https://github.com/SUPERCILEX/forkfs"
 keywords = ["tools", "isolate", "files"]
@@ -20,7 +20,7 @@ path-absolutize = "3.0.11"
 radix_trie = "0.2.1"
 sanitize-filename = "0.3.0"
 simple_logger = "1.13.0"
-structopt = "0.3.23"
+structopt = "0.3.25"
 futures = "0.3.17"
 tokio = { version = "1.12.0", features = ["full"] }
 

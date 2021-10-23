@@ -134,6 +134,7 @@ impl FileChanges {
     fn log_modification(&mut self, file: &Path, change: ChangeType) -> CliResult<()> {
         self.changes.insert(file.to_path_buf(), change);
 
+        // TODO replace this garbage format with https://github.com/bincode-org/bincode
         let mut buf = Vec::with_capacity(2 + file.len() + 1);
         buf.extend_from_slice(
             match change {
