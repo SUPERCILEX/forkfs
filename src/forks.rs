@@ -1,13 +1,13 @@
 use std::{
-    fs::read_dir,
-    path::PathBuf,
+    fs::{read_dir, remove_dir, remove_file, symlink_metadata},
+    io,
+    path::{Path, PathBuf},
     time::{SystemTime, UNIX_EPOCH},
 };
 
 use anyhow::{anyhow, Context};
-use futures::future::join_all;
 use log::info;
-use tokio::runtime::Builder;
+use tokio::{runtime::Builder, task::JoinHandle};
 
 use crate::{
     CliResult,
@@ -99,13 +99,58 @@ pub fn remove_forks(remove: RemoveForks) -> CliResult<()> {
     runtime.block_on(remove_forks_async(remove))
 }
 
+async fn fast_remove_dir_all(path: &Path) -> io::Result<()> {
+    let path = path.to_path_buf();
+    let path = tokio::task::spawn_blocking(|| -> io::Result<_> {
+        let filetype = symlink_metadata(&path)?.file_type();
+        if filetype.is_symlink() {
+            remove_file(&path)?;
+            Ok(None)
+        } else {
+            Ok(Some(path))
+        }
+    })
+        .await??;
+
+    match path {
+        None => Ok(()),
+        Some(path) => spawn_remove_dir_all_recursive(path).await?,
+    }
+}
+
+async fn remove_dir_all_recursive(path: PathBuf) -> io::Result<()> {
+    let mut tasks = Vec::new();
+
+    for child in read_dir(&path)? {
+        let child = child?;
+        if child.file_type()?.is_dir() {
+            tasks.push(spawn_remove_dir_all_recursive(child.path()));
+        } else {
+            remove_file(&child.path())?;
+        }
+    }
+
+    for task in tasks {
+        task.await??;
+    }
+
+    remove_dir(path)
+}
+
+#[inline]
+fn spawn_remove_dir_all_recursive(path: PathBuf) -> JoinHandle<io::Result<()>> {
+    tokio::task::spawn_blocking(|| {
+        futures::executor::block_on(remove_dir_all_recursive(path))
+    })
+}
+
 async fn remove_forks_async(remove: RemoveForks) -> CliResult<()> {
     let forks_dir = forks_dir()?;
 
     if remove.all {
         info!("Deleting directory {:?}", forks_dir);
 
-        let result = tokio::fs::remove_dir_all(&forks_dir).await;
+        let result = fast_remove_dir_all(&forks_dir).await;
         return if result.as_ref().does_not_exist() {
             info!("No forks to remove");
             Ok(())
@@ -124,7 +169,7 @@ async fn remove_forks_async(remove: RemoveForks) -> CliResult<()> {
             let fork_dir = forks_dir.join(&fork);
             info!("Deleting dir {:?}", fork_dir);
 
-            let result = tokio::fs::remove_dir_all(&fork_dir).await;
+            let result = fast_remove_dir_all(&fork_dir).await;
             if result.is_err() {
                 if result.as_ref().does_not_exist() {
                     eprintln!("Fork '{}' not found", fork);
@@ -142,8 +187,8 @@ async fn remove_forks_async(remove: RemoveForks) -> CliResult<()> {
         }));
     }
 
-    for result in join_all(deletions).await {
-        if result.map_err(|_| ()).and_then(|r| r).is_err() {
+    for result in deletions {
+        if result.await.unwrap().is_err() {
             println!();
             return Err(anyhow!("Failed to delete some forks")).with_code(exitcode::IOERR);
         }
