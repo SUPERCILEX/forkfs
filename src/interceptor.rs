@@ -6,6 +6,7 @@ use std::{
 
 use anyhow::Context;
 use libc::user_regs_struct;
+use log::Metadata;
 use nix::{
     libc,
     NixPath,
@@ -117,16 +118,23 @@ fn handle_enter_open(
 ) -> CliResult<()> {
     let path = read_path_from_v2_syscall(pid, regs)?;
 
+    let has_changed_parent = changes.is_direct_child_of_included_parent(&path);
     let is_regular_file = || {
         let result = path.metadata();
-        result.as_ref().does_not_exist()
-            || result.map(|metadata| metadata.is_file()).ok() == Some(true)
+        let is_file = result.as_ref().map(|metadata| metadata.is_file()).ok() == Some(true);
+        let is_changed_dir =
+            result.as_ref().map(|metadata| metadata.is_dir()).ok() == Some(true);
+
+        result.as_ref().does_not_exist() || is_file || is_changed_dir
     };
     let existing_change = changes.includes(&path);
     let can_modify = (regs.rdx as i32).has_any_flags(&MUTATING_OPEN_FLAGS);
-    if (existing_change || can_modify) && is_regular_file() {
+
+    if (existing_change || can_modify || has_changed_parent) && is_regular_file() {
         let relocated = if existing_change {
             changes.destination(&path)
+        } else if has_changed_parent {
+            changes.on_read_dir(&path)?
         } else {
             changes.on_file_modified(&path)?
         };

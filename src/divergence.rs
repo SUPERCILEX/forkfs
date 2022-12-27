@@ -33,6 +33,16 @@ impl FileChanges {
         self.changes.get(file).is_some()
     }
 
+    pub fn is_direct_child_of_included_parent(&self, file: &Path) -> bool {
+        let file = file.absolutize().unwrap(); // TODO create type that wraps an absolutized path
+        let file = file.as_ref();
+        let nearest_parent = self.changes.get_raw_descendant(file)
+            .and_then(|trie| trie.keys().next())
+            .and_then(|buf| buf.as_path().parent());
+
+        nearest_parent == Some(file)
+    }
+
     pub fn destination(&self, file: &Path) -> PathBuf {
         self.root
             .join(file.absolutize().unwrap().strip_prefix("/").unwrap())
@@ -131,7 +141,44 @@ impl FileChanges {
         Ok(relocated)
     }
 
+    pub fn on_read_dir(
+        &mut self,
+        file: &Path,
+    ) -> Result<PathBuf, CliExitError> {
+        let relocated = self.destination(file);
+
+        let entries = file.read_dir()
+            .with_context(|| format!("Unable to read dir {:?}", file))
+            .with_code(exitcode::IOERR)?;
+
+        for entry in entries {
+            let entry = entry
+                .with_context(|| format!("Unable to read dir entry in {:?}", file))
+                .with_code(exitcode::IOERR)?;
+            let metadata = entry.metadata()
+                .with_context(|| format!("Unable to read metadata for {:?}", entry))
+                .with_code(exitcode::IOERR)?;
+
+            let relocated_path = relocated.join(entry.file_name());
+            if relocated_path.exists() { continue; }
+
+            if metadata.is_dir() {
+                fs::create_dir(&relocated_path)
+                    .with_context(|| format!("Creating dir {:?} failed", relocated_path))
+                    .with_code(exitcode::IOERR)?;
+            } else {
+                let path = entry.path();
+                fs::copy(&path, &relocated_path)
+                    .with_context(|| format!("Copy from {:?} to {:?} failed", path, relocated_path))
+                    .with_code(exitcode::IOERR)?;
+            }
+        }
+
+        Ok(relocated)
+    }
+
     fn log_modification(&mut self, file: &Path, change: ChangeType) -> CliResult<()> {
+        let file = file.absolutize().unwrap();
         self.changes.insert(file.to_path_buf(), change);
 
         // TODO replace this garbage format with https://github.com/bincode-org/bincode
