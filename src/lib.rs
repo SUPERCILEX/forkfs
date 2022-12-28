@@ -7,7 +7,7 @@ use std::{
     env,
     env::{current_dir, set_current_dir},
     ffi::{CStr, CString, OsStr},
-    fmt::Write,
+    fmt::{Debug, Display, Write},
     fs, io,
     os::unix::{fs::chroot, process::CommandExt},
     path::{Path, PathBuf},
@@ -68,12 +68,12 @@ fn maybe_create_session(dir: &mut PathBuf) -> Result<bool, Error> {
                 }
                 r => r,
             }
-            .map_io_err(|| format!("Failed to stat {merged:?}"))?
+            .map_io_err_lazy(|| format!("Failed to stat {merged:?}"))?
             .stx_mnt_id
         };
 
         let parent_mount = statx(cwd(), dir.as_path(), AtFlags::empty(), StatxFlags::MNT_ID)
-            .map_io_err(|| format!("Failed to stat {dir:?}"))?
+            .map_io_err_lazy(|| format!("Failed to stat {dir:?}"))?
             .stx_mnt_id;
 
         parent_mount != mount
@@ -83,7 +83,7 @@ fn maybe_create_session(dir: &mut PathBuf) -> Result<bool, Error> {
         for path in ["diff", "work", "merged"] {
             let dir = TmpPath::new(dir, path);
             fs::create_dir_all(&dir)
-                .map_io_err(|| format!("Failed to create directory {dir:?}"))?;
+                .map_io_err_lazy(|| format!("Failed to create directory {dir:?}"))?;
         }
     }
 
@@ -118,19 +118,16 @@ fn mount_session(dir: &mut PathBuf) -> Result<(), Error> {
         MsFlags::empty(),
         Some(command.as_c_str()),
     )
-    .map_io_err(|| format!("Failed to mount directory {dir:?}"))
+    .map_io_err_lazy(|| format!("Failed to mount directory {dir:?}"))
 }
 
 fn enter_session(target: &Path) -> Result<(), Error> {
     // Must be retrieved before chroot-ing
-    let current_dir = current_dir()
-        .into_report()
-        .attach_printable("Failed to get current directory")
-        .change_context(Error::Io)?;
+    let current_dir = current_dir().map_io_err("Failed to get current directory")?;
 
-    chroot(target).map_io_err(|| format!("Failed to change root {target:?}"))?;
+    chroot(target).map_io_err_lazy(|| format!("Failed to change root {target:?}"))?;
     set_current_dir(current_dir)
-        .map_io_err(|| format!("Failed to change current directory {target:?}"))
+        .map_io_err_lazy(|| format!("Failed to change current directory {target:?}"))
 }
 
 fn run_command(args: &[impl AsRef<OsStr>]) -> Result<(), Error> {
@@ -142,7 +139,7 @@ fn run_command(args: &[impl AsRef<OsStr>]) -> Result<(), Error> {
         command.uid(uid);
     }
 
-    Err(command.args(&args[1..]).exec()).map_io_err(|| {
+    Err(command.args(&args[1..]).exec()).map_io_err_lazy(|| {
         format!(
             "Failed to exec {:?}",
             args.iter().map(AsRef::as_ref).collect::<Vec<_>>()
@@ -151,26 +148,54 @@ fn run_command(args: &[impl AsRef<OsStr>]) -> Result<(), Error> {
 }
 
 trait IoErr<Out> {
-    fn map_io_err(self, f: impl FnOnce() -> String) -> Out;
+    fn map_io_err_lazy<P: Display + Debug + Send + Sync + 'static>(
+        self,
+        f: impl FnOnce() -> P,
+    ) -> Out;
+
+    fn map_io_err<P: Display + Debug + Send + Sync + 'static>(self, p: P) -> Out;
 }
 
 impl<T> IoErr<Result<T, Error>> for io::Result<T> {
-    fn map_io_err(self, context: impl FnOnce() -> String) -> Result<T, Error> {
+    fn map_io_err_lazy<P: Display + Debug + Send + Sync + 'static>(
+        self,
+        f: impl FnOnce() -> P,
+    ) -> Result<T, Error> {
         self.into_report()
-            .attach_printable_lazy(context)
+            .attach_printable_lazy(f)
+            .change_context(Error::Io)
+    }
+
+    fn map_io_err<P: Display + Debug + Send + Sync + 'static>(self, p: P) -> Result<T, Error> {
+        self.into_report()
+            .attach_printable(p)
             .change_context(Error::Io)
     }
 }
 
 impl<T> IoErr<Result<T, Error>> for std::result::Result<T, rustix::io::Errno> {
-    fn map_io_err(self, context: impl FnOnce() -> String) -> Result<T, Error> {
-        self.map_err(io::Error::from).map_io_err(context)
+    fn map_io_err_lazy<P: Display + Debug + Send + Sync + 'static>(
+        self,
+        f: impl FnOnce() -> P,
+    ) -> Result<T, Error> {
+        self.map_err(io::Error::from).map_io_err_lazy(f)
+    }
+
+    fn map_io_err<P: Display + Debug + Send + Sync + 'static>(self, p: P) -> Result<T, Error> {
+        self.map_err(io::Error::from).map_io_err(p)
     }
 }
 
 impl<T> IoErr<Result<T, Error>> for std::result::Result<T, nix::Error> {
-    fn map_io_err(self, context: impl FnOnce() -> String) -> Result<T, Error> {
-        self.map_err(io::Error::from).map_io_err(context)
+    fn map_io_err_lazy<P: Display + Debug + Send + Sync + 'static>(
+        self,
+        f: impl FnOnce() -> P,
+    ) -> Result<T, Error> {
+        self.map_err(io::Error::from).map_io_err_lazy(f)
+    }
+
+    fn map_io_err<P: Display + Debug + Send + Sync + 'static>(self, p: P) -> Result<T, Error> {
+        self.map_err(io::Error::from).map_io_err(p)
     }
 }
 
