@@ -34,6 +34,8 @@ pub enum Error {
     InvalidArgument,
     #[error("ForkFS must be run as root.")]
     NotRoot,
+    #[error("Session not found.")]
+    SessionNotFound,
 }
 
 fn get_sessions_dir() -> Result<PathBuf, Error> {
@@ -46,16 +48,17 @@ fn get_sessions_dir() -> Result<PathBuf, Error> {
     Ok(sessions_dir)
 }
 
-fn is_active_session(session: &mut PathBuf) -> Result<bool, Error> {
+fn is_active_session(session: &mut PathBuf, must_exist: bool) -> Result<bool, Error> {
     let mount = {
         let merged = TmpPath::new(session, "merged");
         match statx(cwd(), &*merged, AtFlags::empty(), StatxFlags::MNT_ID) {
-            Err(e) if e.kind() == io::ErrorKind::NotFound => {
+            Err(e) if !must_exist && e.kind() == io::ErrorKind::NotFound => {
                 return Ok(false);
             }
             r => r,
         }
-        .map_io_err_lazy(|| format!("Failed to stat {merged:?}"))?
+        .map_io_err_lazy(|| format!("Failed to stat {merged:?}"))
+        .change_context(Error::SessionNotFound)?
         .stx_mnt_id
     };
 

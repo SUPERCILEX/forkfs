@@ -22,7 +22,7 @@ pub fn list() -> Result<(), Error> {
     let mut is_first = true;
     iter_all_sessions(|entry, session| {
         let name = entry.file_name_ref().to_string_lossy();
-        let session_active = is_active_session(session)?;
+        let session_active = is_active_session(session, true)?;
 
         let mut print = || {
             if !is_first {
@@ -54,7 +54,7 @@ pub fn delete<S: AsRef<str>>(sessions: Op<S>) -> Result<(), Error> {
 }
 
 fn stop_session(session: &mut PathBuf) -> Result<(), Error> {
-    if !is_active_session(session)? {
+    if !is_active_session(session, true)? {
         return Ok(());
     }
 

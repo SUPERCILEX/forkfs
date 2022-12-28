@@ -29,7 +29,7 @@ pub fn run<T: AsRef<OsStr>>(session: &str, command: &[T]) -> Result<(), Error> {
 }
 
 fn maybe_create_session(dir: &mut PathBuf) -> Result<bool, Error> {
-    let session_active = is_active_session(dir)?;
+    let session_active = is_active_session(dir, false)?;
     if !session_active {
         for path in ["diff", "work", "merged"] {
             let dir = TmpPath::new(dir, path);

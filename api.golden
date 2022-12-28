@@ -3,6 +3,7 @@ pub enum forkfs::Error
 pub enum variant forkfs::Error::InvalidArgument
 pub enum variant forkfs::Error::Io
 pub enum variant forkfs::Error::NotRoot
+pub enum variant forkfs::Error::SessionNotFound
 impl core::fmt::Debug for forkfs::Error
 pub fn forkfs::Error::fmt(&self, f: &mut core::fmt::Formatter<'_>) -> core::fmt::Result
 impl core::fmt::Display for forkfs::Error
