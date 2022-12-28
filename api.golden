@@ -36,4 +36,32 @@ pub fn forkfs::Error::try_from(value: U) -> core::result::Result<T, <T as core::
 impl<T, U> core::convert::TryInto<U> for forkfs::Error where U: core::convert::TryFrom<T>
 pub type forkfs::Error::Error = <U as core::convert::TryFrom<T>>::Error
 pub fn forkfs::Error::try_into(self) -> core::result::Result<U, <U as core::convert::TryFrom<T>>::Error>
-pub fn forkfs::forkfs<T: core::convert::AsRef<std::ffi::os_str::OsStr>>(session: &str, command: &[T]) -> error_stack::result::Result<(), forkfs::Error>
+pub enum forkfs::SessionOperand<'a, S: core::convert::AsRef<str>>
+pub enum variant forkfs::SessionOperand::All
+pub enum variant forkfs::SessionOperand::List(&'a [S])
+impl<'a, S> core::panic::unwind_safe::RefUnwindSafe for forkfs::SessionOperand<'a, S> where S: core::panic::unwind_safe::RefUnwindSafe
+impl<'a, S> core::marker::Send for forkfs::SessionOperand<'a, S> where S: core::marker::Sync
+impl<'a, S> core::marker::Sync for forkfs::SessionOperand<'a, S> where S: core::marker::Sync
+impl<'a, S> core::marker::Unpin for forkfs::SessionOperand<'a, S>
+impl<'a, S> core::panic::unwind_safe::UnwindSafe for forkfs::SessionOperand<'a, S> where S: core::panic::unwind_safe::RefUnwindSafe
+impl<T> core::any::Any for forkfs::SessionOperand<'a, S> where T: 'static + core::marker::Sized
+pub fn forkfs::SessionOperand::type_id(&self) -> core::any::TypeId
+impl<T> core::borrow::Borrow<T> for forkfs::SessionOperand<'a, S> where T: core::marker::Sized
+pub fn forkfs::SessionOperand::borrow(&self) -> &T
+impl<T> core::borrow::BorrowMut<T> for forkfs::SessionOperand<'a, S> where T: core::marker::Sized
+pub fn forkfs::SessionOperand::borrow_mut(&mut self) -> &mut T
+impl<T> core::convert::From<T> for forkfs::SessionOperand<'a, S>
+pub fn forkfs::SessionOperand::from(t: T) -> T
+impl<T, U> core::convert::Into<U> for forkfs::SessionOperand<'a, S> where U: core::convert::From<T>
+pub fn forkfs::SessionOperand::into(self) -> U
+impl<D> owo_colors::OwoColorize for forkfs::SessionOperand<'a, S>
+impl<T, U> core::convert::TryFrom<U> for forkfs::SessionOperand<'a, S> where U: core::convert::Into<T>
+pub type forkfs::SessionOperand::Error = core::convert::Infallible
+pub fn forkfs::SessionOperand::try_from(value: U) -> core::result::Result<T, <T as core::convert::TryFrom<U>>::Error>
+impl<T, U> core::convert::TryInto<U> for forkfs::SessionOperand<'a, S> where U: core::convert::TryFrom<T>
+pub type forkfs::SessionOperand::Error = <U as core::convert::TryFrom<T>>::Error
+pub fn forkfs::SessionOperand::try_into(self) -> core::result::Result<U, <U as core::convert::TryFrom<T>>::Error>
+pub fn forkfs::delete_sessions<S: core::convert::AsRef<str>>(sessions: forkfs::SessionOperand<'_, S>) -> error_stack::result::Result<(), forkfs::Error>
+pub fn forkfs::list_sessions() -> error_stack::result::Result<(), forkfs::Error>
+pub fn forkfs::run<T: core::convert::AsRef<std::ffi::os_str::OsStr>>(session: &str, command: &[T]) -> error_stack::result::Result<(), forkfs::Error>
+pub fn forkfs::stop_sessions<S: core::convert::AsRef<str>>(sessions: forkfs::SessionOperand<'_, S>) -> error_stack::result::Result<(), forkfs::Error>

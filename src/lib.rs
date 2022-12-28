@@ -2,26 +2,29 @@
 #![feature(const_option)]
 #![feature(const_result_drop)]
 #![feature(const_cstr_methods)]
+#![feature(dir_entry_ext2)]
+#![allow(clippy::missing_errors_doc)]
 
 use std::{
-    env,
-    env::{current_dir, set_current_dir},
-    ffi::{CStr, CString, OsStr},
-    fmt::{Debug, Display, Write},
-    fs, io,
-    os::unix::{fs::chroot, process::CommandExt},
-    path::{Path, PathBuf},
-    process::Command,
+    fmt::{Debug, Display},
+    io,
+    path::PathBuf,
 };
 
 use error_stack::{IntoReport, Result, ResultExt};
-use nix::mount::{mount, MsFlags};
+pub use run::run;
 use rustix::{
     fs::{cwd, statx, AtFlags, StatxFlags},
     process::getuid,
 };
+pub use sessions::{
+    delete as delete_sessions, list as list_sessions, stop as stop_sessions, Op as SessionOperand,
+};
 
 use crate::path_undo::TmpPath;
+
+mod run;
+mod sessions;
 
 #[derive(thiserror::Error, Debug)]
 pub enum Error {
@@ -33,118 +36,39 @@ pub enum Error {
     NotRoot,
 }
 
-/// # Errors
-///
-/// Forwards I/O errors.
-pub fn forkfs<T: AsRef<OsStr>>(session: &str, command: &[T]) -> Result<(), Error> {
+fn get_sessions_dir() -> Result<PathBuf, Error> {
     if !getuid().is_root() {
         return Err(Error::NotRoot).into_report();
     }
 
-    let session_dir = dirs::cache_dir();
-    let mut session_dir = session_dir
-        .as_deref()
-        .unwrap_or_else(|| Path::new("/tmp"))
-        .join("forkfs");
-    session_dir.push(session);
-
-    if !maybe_create_session(&mut session_dir)? {
-        mount_session(&mut session_dir)?;
-    }
-
-    session_dir.push("merged");
-    enter_session(&session_dir)?;
-
-    run_command(command)
+    let mut sessions_dir = dirs::cache_dir().unwrap_or_else(|| PathBuf::from("/tmp"));
+    sessions_dir.push("forkfs");
+    Ok(sessions_dir)
 }
 
-fn maybe_create_session(dir: &mut PathBuf) -> Result<bool, Error> {
-    let session_active = 'active: {
-        let mount = {
-            let merged = TmpPath::new(dir, "merged");
-            match statx(cwd(), &*merged, AtFlags::empty(), StatxFlags::MNT_ID) {
-                Err(e) if e.kind() == io::ErrorKind::NotFound => {
-                    break 'active false;
-                }
-                r => r,
+fn is_active_session(session: &mut PathBuf) -> Result<bool, Error> {
+    let mount = {
+        let merged = TmpPath::new(session, "merged");
+        match statx(cwd(), &*merged, AtFlags::empty(), StatxFlags::MNT_ID) {
+            Err(e) if e.kind() == io::ErrorKind::NotFound => {
+                return Ok(false);
             }
-            .map_io_err_lazy(|| format!("Failed to stat {merged:?}"))?
-            .stx_mnt_id
-        };
-
-        let parent_mount = statx(cwd(), dir.as_path(), AtFlags::empty(), StatxFlags::MNT_ID)
-            .map_io_err_lazy(|| format!("Failed to stat {dir:?}"))?
-            .stx_mnt_id;
-
-        parent_mount != mount
+            r => r,
+        }
+        .map_io_err_lazy(|| format!("Failed to stat {merged:?}"))?
+        .stx_mnt_id
     };
 
-    if !session_active {
-        for path in ["diff", "work", "merged"] {
-            let dir = TmpPath::new(dir, path);
-            fs::create_dir_all(&dir)
-                .map_io_err_lazy(|| format!("Failed to create directory {dir:?}"))?;
-        }
-    }
-
-    Ok(session_active)
-}
-
-fn mount_session(dir: &mut PathBuf) -> Result<(), Error> {
-    const OVERLAY: &CStr = CStr::from_bytes_with_nul(b"overlay\0").ok().unwrap();
-
-    let command = {
-        let mut command = String::from("lowerdir=/,");
-        {
-            let diff = TmpPath::new(dir, "diff");
-            write!(command, "upperdir={},", diff.display()).unwrap();
-        }
-        {
-            let work = TmpPath::new(dir, "work");
-            write!(command, "workdir={}", work.display()).unwrap();
-        }
-
-        CString::new(command.into_bytes())
-            .into_report()
-            .attach_printable("Invalid path bytes")
-            .change_context(Error::InvalidArgument)?
-    };
-
-    let dir = TmpPath::new(dir, "merged");
-    mount(
-        Some(OVERLAY),
-        &*dir,
-        Some(OVERLAY),
-        MsFlags::empty(),
-        Some(command.as_c_str()),
+    let parent_mount = statx(
+        cwd(),
+        session.as_path(),
+        AtFlags::empty(),
+        StatxFlags::MNT_ID,
     )
-    .map_io_err_lazy(|| format!("Failed to mount directory {dir:?}"))
-}
+    .map_io_err_lazy(|| format!("Failed to stat {session:?}"))?
+    .stx_mnt_id;
 
-fn enter_session(target: &Path) -> Result<(), Error> {
-    // Must be retrieved before chroot-ing
-    let current_dir = current_dir().map_io_err("Failed to get current directory")?;
-
-    chroot(target).map_io_err_lazy(|| format!("Failed to change root {target:?}"))?;
-    set_current_dir(current_dir)
-        .map_io_err_lazy(|| format!("Failed to change current directory {target:?}"))
-}
-
-fn run_command(args: &[impl AsRef<OsStr>]) -> Result<(), Error> {
-    let mut command = Command::new(args[0].as_ref());
-
-    // Downgrade privilege level to pre-sudo if possible
-    if let Some(uid) = env::var_os("SUDO_UID").as_ref().and_then(|s| s.to_str())
-        && let Ok(uid) = uid.parse() {
-        command.uid(uid);
-    }
-
-    Err(command.args(&args[1..]).exec()).map_io_err_lazy(|| {
-        format!(
-            "Failed to exec {:?}",
-            args.iter().map(AsRef::as_ref).collect::<Vec<_>>()
-        )
-    })
+    Ok(parent_mount != mount)
 }
 
 trait IoErr<Out> {

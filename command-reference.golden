@@ -1,4 +1,4 @@
-A divergent history file system emulator
+A sandboxing file system emulator
 
 Under the hood, `ForkFS` creates an `OverlayFS` per session. `ForkFS` must therefore be run as sudo
 to create these new mount points.
@@ -7,30 +7,213 @@ Note: we make no security claims. Do NOT use this tool with potentially maliciou
 
 PS: you might also be interested in Firejail: <https://firejail.wordpress.com/>.
 
-Usage: forkfs [OPTIONS] <COMMAND>...
+Usage: forkfs <COMMAND>
+
+Commands:
+  help
+          Print this message or the help of the given subcommand(s)
+  run
+          Run commands inside the sandbox
+  sessions
+          Manage sessions
+
+Options:
+  -h, --help
+          Print help information (use `-h` for a summary)
+
+  -V, --version
+          Print version information
+
+---
+
+Run commands inside the sandbox
+
+Usage: forkfs run [OPTIONS] <COMMAND>...
 
 Arguments:
   <COMMAND>...
           The command to run in isolation
 
 Options:
-  -h, --help
-          Print help information (use `-h` for a summary)
-
   -s, --session <SESSION>
           The fork/sandbox to use
           
-          Each session has its own separate view of the file system that is persistent. That is,
-          individual command invocations build upon each other.
-          
-          To delete a session, unmount and delete the directory of the session in ForkFS' cache
-          directory. For example: `sudo umount /root/.cache/forkfs/default/merged && sudo rm -r
-          /root/.cache/forkfs/default` where 'default' is the session name.
-          
-          Note: weird things may happen if the real file system changes after establishing a
-          session. You may want to delete all sessions to restore clean behavior in such cases.
+          If it does not exist or is inactive, it will be created and activated.
           
           [default: default]
 
-  -V, --version
-          Print version information
+  -h, --help
+          Print help information (use `-h` for a summary)
+
+---
+
+Manage sessions
+
+Each session has its own separate view of the file system that is persistent. That is, individual
+command invocations build upon each other.
+
+Actives sessions are those that are mounted, while inactive sessions remember the changes that were
+made within them, but are not ready to be used.
+
+Note: weird things may happen if the real file system changes after establishing a session. You may
+want to delete all sessions to restore clean behavior in such cases.
+
+Usage: forkfs sessions <COMMAND>
+
+Commands:
+  list
+          List sessions
+  stop
+          Unmount active sessions
+  delete
+          Delete sessions
+  help
+          Print this message or the help of the given subcommand(s)
+
+Options:
+  -h, --help
+          Print help information (use `-h` for a summary)
+
+---
+
+List sessions
+
+`[active]` sessions are denoted with brackets while `inactive` sessions are bare.
+
+Usage: forkfs sessions list
+
+Options:
+  -h, --help
+          Print help information (use `-h` for a summary)
+
+---
+
+Unmount active sessions
+
+Usage: forkfs sessions stop [OPTIONS] <SESSIONS>...
+
+Arguments:
+  <SESSIONS>...
+          The session(s) to operate on
+
+Options:
+  -a, --all
+          Operate on all sessions
+
+  -h, --help
+          Print help information (use `-h` for a summary)
+
+---
+
+Delete sessions
+
+Usage: forkfs sessions delete [OPTIONS] <SESSIONS>...
+
+Arguments:
+  <SESSIONS>...
+          The session(s) to operate on
+
+Options:
+  -a, --all
+          Operate on all sessions
+
+  -h, --help
+          Print help information (use `-h` for a summary)
+
+---
+
+Print this message or the help of the given subcommand(s)
+
+Usage: forkfs sessions help [COMMAND]
+
+Commands:
+  list
+          List sessions
+  stop
+          Unmount active sessions
+  delete
+          Delete sessions
+  help
+          Print this message or the help of the given subcommand(s)
+
+---
+
+List sessions
+
+Usage: forkfs sessions help list
+
+---
+
+Unmount active sessions
+
+Usage: forkfs sessions help stop
+
+---
+
+Delete sessions
+
+Usage: forkfs sessions help delete
+
+---
+
+Print this message or the help of the given subcommand(s)
+
+Usage: forkfs sessions help help
+
+---
+
+Print this message or the help of the given subcommand(s)
+
+Usage: forkfs help [COMMAND]
+
+Commands:
+  run
+          Run commands inside the sandbox
+  sessions
+          Manage sessions
+  help
+          Print this message or the help of the given subcommand(s)
+
+---
+
+Run commands inside the sandbox
+
+Usage: forkfs help run
+
+---
+
+Manage sessions
+
+Usage: forkfs help sessions [COMMAND]
+
+Commands:
+  list
+          List sessions
+  stop
+          Unmount active sessions
+  delete
+          Delete sessions
+
+---
+
+List sessions
+
+Usage: forkfs help sessions list
+
+---
+
+Unmount active sessions
+
+Usage: forkfs help sessions stop
+
+---
+
+Delete sessions
+
+Usage: forkfs help sessions delete
+
+---
+
+Print this message or the help of the given subcommand(s)
+
+Usage: forkfs help help
