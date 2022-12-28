@@ -41,29 +41,6 @@ jobs:
       - name: Run tests
         run: cargo test
 
-  miri:
-    runs-on: ubuntu-latest
-    steps:
-      - name: Checkout
-        uses: actions/checkout@v3
-      - name: Install Rust
-        run: rustup component add miri
-      - name: Cargo Cache
-        uses: actions/cache@v3
-        with:
-          path: |
-            ~/.cargo/bin/
-            ~/.cargo/registry/index/
-            ~/.cargo/registry/cache/
-            ~/.cargo/git/db/
-            target/
-          key: ${{ runner.os }}-cargo-miri-${{ hashFiles('**/Cargo.lock') }}
-          restore-keys: ${{ runner.os }}-cargo-
-      - name: Run miri
-        run: cargo miri test
-        env:
-          MIRIFLAGS: -Zmiri-disable-isolation
-
   lint:
     runs-on: ubuntu-latest
     steps:
