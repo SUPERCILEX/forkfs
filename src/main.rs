@@ -1,156 +1,124 @@
-use std::process::exit;
-
-use anyhow::Result;
-use clap_verbosity_flag::Verbosity;
-use simple_logger::SimpleLogger;
-use structopt::{clap::AppSettings, StructOpt};
-
-use crate::{
-    errors::CliResult,
-    forks::{apply_fork, diff_fork, get_fork, list_forks, remove_forks},
-    interceptor::run_intercepted_program,
+use std::{
+    ffi::OsString,
+    io,
+    io::Write,
+    process::{ExitCode, Termination},
 };
 
-mod divergence;
-mod errors;
-mod forks;
-mod interceptor;
+use clap::{ArgAction, Parser};
+use forkfs::forkfs;
 
-/// A divergent history file system
-#[derive(Debug, StructOpt)]
-#[structopt(
-author = "Alex Saveau (@SUPERCILEX)",
-global_settings = & [AppSettings::InferSubcommands, AppSettings::ColoredHelp],
-)]
-struct ForkFS {
-    #[structopt(flatten)]
-    verbose: Verbosity,
-
-    #[structopt(subcommand)]
-    cmd: Cmd,
+/// A divergent history file system emulator
+///
+/// Under the hood, `ForkFS` creates an `OverlayFS` per session. `ForkFS` must
+/// therefore be run as sudo to create these new mount points.
+///
+/// Note: we make no security claims. Do NOT use this tool with potentially
+/// malicious software.
+///
+/// PS: you might also be interested in Firejail: <https://firejail.wordpress.com/>.
+#[derive(Parser, Debug)]
+#[clap(version, author = "Alex Saveau (@SUPERCILEX)")]
+#[clap(infer_subcommands = true, infer_long_args = true)]
+#[clap(next_display_order = None)]
+#[clap(max_term_width = 100)]
+#[command(disable_help_flag = true)]
+#[command(arg_required_else_help = true)]
+#[cfg_attr(test, clap(help_expected = true))]
+struct ForkFs {
+    /// The fork/sandbox to use
+    ///
+    /// Each session has its own separate view of the file system that is
+    /// persistent. That is, individual command invocations build upon each
+    /// other.
+    ///
+    /// To delete a session, unmount and delete the directory of the session in
+    /// ForkFS' cache directory. For example:
+    /// `sudo umount /root/.cache/forkfs/default/merged &&
+    ///  sudo rm -r /root/.cache/forkfs/default` where 'default' is the session
+    /// name.
+    ///
+    /// Note: weird things may happen if the real file system changes after
+    /// establishing a session. You may want to delete all sessions to
+    /// restore clean behavior in such cases.
+    #[arg(short, long, short_alias = 'n', alias = "name")]
+    #[arg(default_value = "default")]
+    session: String,
+    /// The command to run in isolation
+    #[arg(required = true)]
+    command: Vec<OsString>,
+    #[arg(short, long, short_alias = '?', global = true)]
+    #[arg(action = ArgAction::Help, help = "Print help information (use `--help` for more detail)")]
+    #[arg(long_help = "Print help information (use `-h` for a summary)")]
+    help: Option<bool>,
 }
 
-#[derive(Debug, StructOpt)]
-enum Cmd {
-    /// Run a program in a forked file system
-    Run(Run),
+fn main() -> ExitCode {
+    let args = ForkFs::parse();
 
-    /// Manage forked file systems
-    Forks(Forks),
-}
-
-#[derive(Debug, StructOpt)]
-struct Run {
-    /// The FS fork to use
-    #[structopt(
-    long = "fork",
-    alias = "session",
-    short = "s", default_value = "",
-    validator = validate_fork_name
-    )]
-    fork: String,
-
-    /// The program to run
-    #[structopt(required = true)]
-    program: Vec<String>,
-}
-
-#[derive(Debug, StructOpt)]
-struct Forks {
-    #[structopt(subcommand)]
-    cmd: Option<ForksCmd>,
-}
-
-#[derive(Debug, StructOpt)]
-enum ForksCmd {
-    /// List available forks
-    List(ListForks),
-
-    /// Diff a forked file system's changes with ground truth (the actual FS)
-    Diff(DiffFork),
-
-    /// Apply the changes from a fork to ground truth (the actual FS)
-    Apply(ApplyFork),
-
-    /// Delete forks
-    Remove(RemoveForks),
-}
-
-#[derive(Debug, StructOpt)]
-struct ListForks {}
-
-#[derive(Debug, StructOpt)]
-struct DiffFork {
-    /// The FS fork to diff
-    fork: String,
-}
-
-#[derive(Debug, StructOpt)]
-struct ApplyFork {
-    /// The FS fork to apply
-    fork: String,
-}
-
-#[derive(Debug, StructOpt)]
-pub struct RemoveForks {
-    /// Remove all forks
-    #[structopt(long = "all", short = "a")]
-    all: bool,
-
-    /// The FS fork(s) to remove
-    #[structopt(
-    conflicts_with = "all",
-    required_unless = "all",
-    empty_values = false,
-    validator = validate_fork_name
-    )]
-    forks: Vec<String>,
-}
-
-fn main() {
-    if let Err(e) = wrapped_main() {
-        if let Some(source) = e.source {
-            eprintln!("{:?}", source);
+    match forkfs(&args.session, args.command.as_slice()) {
+        Ok(o) => o.report(),
+        Err(err) => {
+            drop(writeln!(io::stderr(), "Error: {err:?}"));
+            err.report()
         }
-        exit(e.code);
     }
 }
 
-fn wrapped_main() -> CliResult<()> {
-    let args = ForkFS::from_args();
-    SimpleLogger::new()
-        .with_level(args.verbose.log_level().unwrap().to_level_filter())
-        .init()
+#[cfg(test)]
+mod cli_tests {
+    use std::fmt::Write;
+
+    use clap::{Command, CommandFactory};
+    use expect_test::expect_file;
+
+    use super::*;
+
+    #[test]
+    fn verify_app() {
+        ForkFs::command().debug_assert();
+    }
+
+    #[test]
+    #[cfg_attr(miri, ignore)] // wrap_help breaks miri
+    fn help_for_review() {
+        let mut command = ForkFs::command();
+
+        command.build();
+
+        let mut long = String::new();
+        let mut short = String::new();
+
+        write_help(&mut long, &mut command, LongOrShortHelp::Long);
+        write_help(&mut short, &mut command, LongOrShortHelp::Short);
+
+        expect_file!["../command-reference.golden"].assert_eq(&long);
+        expect_file!["../command-reference-short.golden"].assert_eq(&short);
+    }
+
+    #[derive(Copy, Clone)]
+    enum LongOrShortHelp {
+        Long,
+        Short,
+    }
+
+    fn write_help(buffer: &mut impl Write, cmd: &mut Command, long_or_short_help: LongOrShortHelp) {
+        write!(
+            buffer,
+            "{}",
+            match long_or_short_help {
+                LongOrShortHelp::Long => cmd.render_long_help(),
+                LongOrShortHelp::Short => cmd.render_help(),
+            }
+        )
         .unwrap();
 
-    match args.cmd {
-        Cmd::Run(options) => run(options),
-        Cmd::Forks(options) => forks(options),
+        for sub in cmd.get_subcommands_mut() {
+            writeln!(buffer).unwrap();
+            writeln!(buffer, "---").unwrap();
+            writeln!(buffer).unwrap();
+
+            write_help(buffer, sub, long_or_short_help);
+        }
     }
-}
-
-fn run(options: Run) -> CliResult<()> {
-    let fork = get_fork(options.fork)?;
-
-    println!(
-        "Using fork '{}'",
-        fork.file_name().unwrap().to_str().unwrap()
-    );
-    run_intercepted_program(options.program, fork)
-}
-
-fn forks(options: Forks) -> CliResult<()> {
-    match options.cmd {
-        None | Some(ForksCmd::List(_)) => list_forks(),
-        Some(ForksCmd::Diff(options)) => diff_fork(options.fork),
-        Some(ForksCmd::Apply(options)) => apply_fork(options.fork),
-        Some(ForksCmd::Remove(options)) => remove_forks(options),
-    }
-}
-
-fn validate_fork_name(fork: String) -> Result<(), String> {
-    if fork != sanitize_filename::sanitize(&fork) {
-        return Err(String::from("Fork name cannot look like a file path"));
-    }
-    Ok(())
 }

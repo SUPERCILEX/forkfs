@@ -1,0 +1,36 @@
+A divergent history file system emulator
+
+Under the hood, `ForkFS` creates an `OverlayFS` per session. `ForkFS` must therefore be run as sudo
+to create these new mount points.
+
+Note: we make no security claims. Do NOT use this tool with potentially malicious software.
+
+PS: you might also be interested in Firejail: <https://firejail.wordpress.com/>.
+
+Usage: forkfs [OPTIONS] <COMMAND>...
+
+Arguments:
+  <COMMAND>...
+          The command to run in isolation
+
+Options:
+  -h, --help
+          Print help information (use `-h` for a summary)
+
+  -s, --session <SESSION>
+          The fork/sandbox to use
+          
+          Each session has its own separate view of the file system that is persistent. That is,
+          individual command invocations build upon each other.
+          
+          To delete a session, unmount and delete the directory of the session in ForkFS' cache
+          directory. For example: `sudo umount /root/.cache/forkfs/default/merged && sudo rm -r
+          /root/.cache/forkfs/default` where 'default' is the session name.
+          
+          Note: weird things may happen if the real file system changes after establishing a
+          session. You may want to delete all sessions to restore clean behavior in such cases.
+          
+          [default: default]
+
+  -V, --version
+          Print version information

@@ -7,23 +7,28 @@ description = "ForkFS allows you to isolate a process's changes to your files, s
 repository = "https://github.com/SUPERCILEX/forkfs"
 keywords = ["tools", "isolate", "files"]
 categories = ["command-line-utilities", "development-tools", "development-tools::debugging", "filesystem"]
+license = "Apache-2.0"
 
 [dependencies]
-anyhow = "1.0.44"
-clap-verbosity-flag = "0.3.2"
-derive-new = "0.5.9"
+clap = { version = "4.0.32", features = ["derive", "wrap_help"] }
 dirs = "4.0.0"
-exitcode = "1.1.2"
-futures = "0.3.17"
-log = "0.4.14"
-nix = "0.23.0"
-path-absolutize = "3.0.11"
-radix_trie = "0.2.1"
-sanitize-filename = "0.3.0"
-simple_logger = "1.13.0"
-structopt = "0.3.25"
-tokio = { version = "1.12.0", features = ["full"] }
+error-stack = "0.2.4"
+nix = { version = "0.26.1", default-features = false, features = ["user", "mount"] }
+rustix = { version = "0.36.6", features = ["fs", "process"] }
+thiserror = "1.0.38"
+
+[dev-dependencies]
+expect-test = "1.4.0"
+public-api = "0.24.0"
+rustdoc-json = "0.7.0"
 
 [profile.release]
 lto = true
 codegen-units = 1
+strip = true
+panic = "abort"
+
+[profile.dr]
+inherits = "release"
+debug = true
+strip = false

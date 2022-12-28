@@ -1,5 +1,10 @@
 #!/usr/bin/env bash
 
-cargo +nightly fmt
-cargo +nightly clippy --fix --allow-dirty
-cargo +nightly fix --allow-dirty
+cargo fmt
+cargo clippy --fix --all-targets --all-features --allow-dirty --allow-staged --\
+  -W clippy::all \
+  -W clippy::float_cmp_const \
+  -W clippy::empty_structs_with_brackets \
+  -W clippy::pedantic \
+  -W clippy::nursery \
+  -W clippy::cargo
