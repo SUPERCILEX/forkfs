@@ -68,16 +68,12 @@ fn maybe_create_session(dir: &mut PathBuf) -> Result<bool, Error> {
                 }
                 r => r,
             }
-            .into_report()
-            .attach_printable_lazy(|| format!("Failed to stat {merged:?}"))
-            .change_context(Error::Io)?
+            .map_io_err(|| format!("Failed to stat {merged:?}"))?
             .stx_mnt_id
         };
 
         let parent_mount = statx(cwd(), dir.as_path(), AtFlags::empty(), StatxFlags::MNT_ID)
-            .into_report()
-            .attach_printable_lazy(|| format!("Failed to stat {dir:?}"))
-            .change_context(Error::Io)?
+            .map_io_err(|| format!("Failed to stat {dir:?}"))?
             .stx_mnt_id;
 
         parent_mount != mount
@@ -87,9 +83,7 @@ fn maybe_create_session(dir: &mut PathBuf) -> Result<bool, Error> {
         for path in ["diff", "work", "merged"] {
             let dir = TmpPath::new(dir, path);
             fs::create_dir_all(&dir)
-                .into_report()
-                .attach_printable_lazy(|| format!("Failed to create directory {dir:?}"))
-                .change_context(Error::Io)?;
+                .map_io_err(|| format!("Failed to create directory {dir:?}"))?;
         }
     }
 
@@ -124,9 +118,7 @@ fn mount_session(dir: &mut PathBuf) -> Result<(), Error> {
         MsFlags::empty(),
         Some(command.as_c_str()),
     )
-    .into_report()
-    .attach_printable_lazy(|| format!("Failed to mount directory {dir:?}"))
-    .change_context(Error::Io)
+    .map_io_err(|| format!("Failed to mount directory {dir:?}"))
 }
 
 fn enter_session(target: &Path) -> Result<(), Error> {
@@ -136,14 +128,9 @@ fn enter_session(target: &Path) -> Result<(), Error> {
         .attach_printable("Failed to get current directory")
         .change_context(Error::Io)?;
 
-    chroot(target)
-        .into_report()
-        .attach_printable_lazy(|| format!("Failed to change root {target:?}"))
-        .change_context(Error::Io)?;
+    chroot(target).map_io_err(|| format!("Failed to change root {target:?}"))?;
     set_current_dir(current_dir)
-        .into_report()
-        .attach_printable_lazy(|| format!("Failed to change current directory {target:?}"))
-        .change_context(Error::Io)
+        .map_io_err(|| format!("Failed to change current directory {target:?}"))
 }
 
 fn run_command(args: &[impl AsRef<OsStr>]) -> Result<(), Error> {
@@ -155,15 +142,36 @@ fn run_command(args: &[impl AsRef<OsStr>]) -> Result<(), Error> {
         command.uid(uid);
     }
 
-    Err(command.args(&args[1..]).exec())
-        .into_report()
-        .attach_printable_lazy(|| {
-            format!(
-                "Failed to exec {:?}",
-                args.iter().map(AsRef::as_ref).collect::<Vec<_>>()
-            )
-        })
-        .change_context(Error::Io)
+    Err(command.args(&args[1..]).exec()).map_io_err(|| {
+        format!(
+            "Failed to exec {:?}",
+            args.iter().map(AsRef::as_ref).collect::<Vec<_>>()
+        )
+    })
+}
+
+trait IoErr<Out> {
+    fn map_io_err(self, f: impl FnOnce() -> String) -> Out;
+}
+
+impl<T> IoErr<Result<T, Error>> for io::Result<T> {
+    fn map_io_err(self, context: impl FnOnce() -> String) -> Result<T, Error> {
+        self.into_report()
+            .attach_printable_lazy(context)
+            .change_context(Error::Io)
+    }
+}
+
+impl<T> IoErr<Result<T, Error>> for std::result::Result<T, rustix::io::Errno> {
+    fn map_io_err(self, context: impl FnOnce() -> String) -> Result<T, Error> {
+        self.map_err(io::Error::from).map_io_err(context)
+    }
+}
+
+impl<T> IoErr<Result<T, Error>> for std::result::Result<T, nix::Error> {
+    fn map_io_err(self, context: impl FnOnce() -> String) -> Result<T, Error> {
+        self.map_err(io::Error::from).map_io_err(context)
+    }
 }
 
 mod path_undo {
