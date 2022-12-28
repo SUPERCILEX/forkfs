@@ -28,6 +28,7 @@ use forkfs::SessionOperand;
 struct ForkFs {
     #[command(subcommand)]
     cmd: Cmd,
+
     #[arg(short, long, short_alias = '?', global = true)]
     #[arg(action = ArgAction::Help, help = "Print help information (use `--help` for more detail)")]
     #[arg(long_help = "Print help information (use `-h` for a summary)")]
@@ -39,6 +40,7 @@ enum Cmd {
     /// Run commands inside the sandbox
     #[command(alias = "execute")]
     Run(Run),
+
     /// Manage sessions
     ///
     /// Each session has its own separate view of the file system that is
@@ -65,6 +67,7 @@ struct Run {
     #[arg(short = 's', long = "session", short_alias = 'n', aliases = & ["name", "id"])]
     #[arg(default_value = "default")]
     session: String,
+
     /// The command to run in isolation
     #[arg(required = true)]
     command: Vec<OsString>,
@@ -78,9 +81,11 @@ enum Sessions {
     /// are bare.
     #[command(alias = "ls")]
     List,
+
     /// Unmount active sessions
     #[command(alias = "close")]
     Stop(SessionCmd),
+
     /// Delete sessions
     #[command(alias = "destroy")]
     Delete(SessionCmd),
@@ -92,6 +97,7 @@ struct SessionCmd {
     /// Operate on all sessions
     #[arg(short = 'a', long = "all", group = "names")]
     all: bool,
+
     /// The session(s) to operate on
     #[arg(required = true, group = "names")]
     sessions: Vec<String>,
