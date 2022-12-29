@@ -42,6 +42,7 @@ fn maybe_create_session(dir: &mut PathBuf) -> Result<bool, Error> {
 
 fn mount_session(dir: &mut PathBuf) -> Result<(), Error> {
     const OVERLAY: &CStr = CStr::from_bytes_with_nul(b"overlay\0").ok().unwrap();
+    const PROC: &CStr = CStr::from_bytes_with_nul(b"/proc\0").ok().unwrap();
 
     let command = {
         let mut command = String::from("lowerdir=/,");
@@ -60,15 +61,25 @@ fn mount_session(dir: &mut PathBuf) -> Result<(), Error> {
             .change_context(Error::InvalidArgument)?
     };
 
-    let dir = TmpPath::new(dir, "merged");
+    let mut merged = TmpPath::new(dir, "merged");
     mount(
         Some(OVERLAY),
-        &*dir,
+        &*merged,
         Some(OVERLAY),
         MsFlags::empty(),
         Some(command.as_c_str()),
     )
-    .map_io_err_lazy(|| format!("Failed to mount directory {dir:?}"))
+    .map_io_err_lazy(|| format!("Failed to mount directory {merged:?}"))?;
+
+    let proc = TmpPath::new(&mut merged, "proc");
+    mount(
+        Some(PROC),
+        &*proc,
+        None::<&str>,
+        MsFlags::MS_BIND | MsFlags::MS_REC,
+        None::<&str>,
+    )
+    .map_io_err_lazy(|| format!("Failed to mount directory {proc:?}"))
 }
 
 fn enter_session(target: &Path) -> Result<(), Error> {

@@ -58,7 +58,14 @@ fn stop_session(session: &mut PathBuf) -> Result<(), Error> {
         return Ok(());
     }
 
-    let merged = TmpPath::new(session, "merged");
+    let mut merged = TmpPath::new(session, "merged");
+
+    {
+        let proc = TmpPath::new(&mut merged, "proc");
+        umount(proc.as_path())
+            .map_io_err_lazy(|| format!("Failed to unmount directory {proc:?}"))?;
+    }
+
     umount(merged.as_path()).map_io_err_lazy(|| format!("Failed to unmount directory {merged:?}"))
 }
 
