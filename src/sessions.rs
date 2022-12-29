@@ -8,7 +8,7 @@ use std::{
 };
 
 use error_stack::Result;
-use nix::mount::umount;
+use nix::mount::{umount, umount2, MntFlags};
 
 use crate::{get_sessions_dir, is_active_session, path_undo::TmpPath, Error, IoErr};
 
@@ -60,10 +60,10 @@ fn stop_session(session: &mut PathBuf) -> Result<(), Error> {
 
     let mut merged = TmpPath::new(session, "merged");
 
-    {
-        let proc = TmpPath::new(&mut merged, "proc");
-        umount(proc.as_path())
-            .map_io_err_lazy(|| format!("Failed to unmount directory {proc:?}"))?;
+    for target in ["proc", "dev", "run", "tmp"] {
+        let target = TmpPath::new(&mut merged, target);
+        umount2(target.as_path(), MntFlags::MNT_DETACH)
+            .map_io_err_lazy(|| format!("Failed to unmount directory {target:?}"))?;
     }
 
     umount(merged.as_path()).map_io_err_lazy(|| format!("Failed to unmount directory {merged:?}"))

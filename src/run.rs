@@ -42,7 +42,11 @@ fn maybe_create_session(dir: &mut PathBuf) -> Result<bool, Error> {
 
 fn mount_session(dir: &mut PathBuf) -> Result<(), Error> {
     const OVERLAY: &CStr = CStr::from_bytes_with_nul(b"overlay\0").ok().unwrap();
+
     const PROC: &CStr = CStr::from_bytes_with_nul(b"/proc\0").ok().unwrap();
+    const DEV: &CStr = CStr::from_bytes_with_nul(b"/dev\0").ok().unwrap();
+    const RUN: &CStr = CStr::from_bytes_with_nul(b"/run\0").ok().unwrap();
+    const TMP: &CStr = CStr::from_bytes_with_nul(b"/tmp\0").ok().unwrap();
 
     let command = {
         let mut command = String::from("lowerdir=/,");
@@ -71,15 +75,27 @@ fn mount_session(dir: &mut PathBuf) -> Result<(), Error> {
     )
     .map_io_err_lazy(|| format!("Failed to mount directory {merged:?}"))?;
 
-    let proc = TmpPath::new(&mut merged, "proc");
-    mount(
-        Some(PROC),
-        &*proc,
-        None::<&str>,
-        MsFlags::MS_BIND | MsFlags::MS_REC,
-        None::<&str>,
-    )
-    .map_io_err_lazy(|| format!("Failed to mount directory {proc:?}"))
+    for (source, target) in [(PROC, "proc"), (DEV, "dev"), (RUN, "run"), (TMP, "tmp")] {
+        let target = TmpPath::new(&mut merged, target);
+        mount(
+            Some(source),
+            &*target,
+            None::<&str>,
+            MsFlags::MS_BIND | MsFlags::MS_REC,
+            None::<&str>,
+        )
+        .map_io_err_lazy(|| format!("Failed to mount directory {target:?}"))?;
+        mount(
+            None::<&str>,
+            &*target,
+            None::<&str>,
+            MsFlags::MS_SLAVE | MsFlags::MS_REC,
+            None::<&str>,
+        )
+        .map_io_err_lazy(|| format!("Failed to enslave mount {target:?}"))?;
+    }
+
+    Ok(())
 }
 
 fn enter_session(target: &Path) -> Result<(), Error> {
