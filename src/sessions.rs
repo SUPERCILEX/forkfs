@@ -70,6 +70,8 @@ fn stop_session(session: &mut PathBuf) -> Result<(), Error> {
 }
 
 fn delete_session(session: &Path) -> Result<(), Error> {
+    // TODO double check that this is slow and then switch to rmz once that's
+    //  released
     fs::remove_dir_all(session)
         .map_io_err_lazy(|| format!("Failed to delete directory {session:?}"))
 }
