@@ -4,6 +4,7 @@
 #![feature(const_cstr_methods)]
 #![feature(dir_entry_ext2)]
 #![allow(clippy::missing_errors_doc)]
+#![allow(clippy::multiple_crate_versions)]
 
 use std::{
     fmt::{Debug, Display},
@@ -39,6 +40,7 @@ pub enum Error {
 }
 
 fn get_sessions_dir() -> Result<PathBuf, Error> {
+    // TODO check capabilities instead once in rustix
     if !getuid().is_root() {
         return Err(Error::NotRoot).into_report();
     }

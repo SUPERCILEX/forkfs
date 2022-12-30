@@ -1,3 +1,5 @@
+#![allow(clippy::multiple_crate_versions)]
+
 use std::{
     ffi::OsString,
     io,
