@@ -2,7 +2,13 @@
 
 ForkFS allows you to sandbox a process's changes to your file system.
 
+You can think of it as a light-weight container: programs still have access to your real system
+(and can therefore jump out of the sandbox), but their disk changes are re-routed to special
+directories without changing the real file system.
+
 ## Installation
+
+> Note: ForkFS is Linux-only.
 
 ### Use prebuilt binaries
 
