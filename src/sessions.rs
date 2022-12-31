@@ -1,4 +1,6 @@
 use std::{
+    ffi::{CStr, CString},
+    fmt::Write as FmtWrite,
     fs,
     fs::DirEntry,
     io,
@@ -7,10 +9,11 @@ use std::{
     path::{Path, PathBuf},
 };
 
-use error_stack::Result;
-use nix::mount::{umount, umount2, MntFlags};
+use error_stack::{IntoReport, Result, ResultExt};
+use nix::mount::{mount, umount, umount2, MntFlags, MsFlags};
+use rustix::fs::{cwd, statx, AtFlags, StatxFlags};
 
-use crate::{get_sessions_dir, is_active_session, path_undo::TmpPath, Error, IoErr};
+use crate::{get_sessions_dir, path_undo::TmpPath, Error, IoErr};
 
 pub enum Op<'a, S: AsRef<str>> {
     All,
@@ -53,6 +56,77 @@ pub fn delete<S: AsRef<str>>(sessions: Op<S>) -> Result<(), Error> {
     })
 }
 
+pub fn maybe_create_session(dir: &mut PathBuf) -> Result<(), Error> {
+    if is_active_session(dir, false)? {
+        return Ok(());
+    }
+
+    for path in ["diff", "work", "merged"] {
+        let dir = TmpPath::new(dir, path);
+        fs::create_dir_all(&dir)
+            .map_io_err_lazy(|| format!("Failed to create directory {dir:?}"))?;
+    }
+    start_session(dir)
+}
+
+fn start_session(dir: &mut PathBuf) -> Result<(), Error> {
+    const OVERLAY: &CStr = CStr::from_bytes_with_nul(b"overlay\0").ok().unwrap();
+
+    const PROC: &CStr = CStr::from_bytes_with_nul(b"/proc\0").ok().unwrap();
+    const DEV: &CStr = CStr::from_bytes_with_nul(b"/dev\0").ok().unwrap();
+    const RUN: &CStr = CStr::from_bytes_with_nul(b"/run\0").ok().unwrap();
+    const TMP: &CStr = CStr::from_bytes_with_nul(b"/tmp\0").ok().unwrap();
+
+    let command = {
+        let mut command = String::from("lowerdir=/,");
+        {
+            let diff = TmpPath::new(dir, "diff");
+            write!(command, "upperdir={},", diff.display()).unwrap();
+        }
+        {
+            let work = TmpPath::new(dir, "work");
+            write!(command, "workdir={}", work.display()).unwrap();
+        }
+
+        CString::new(command.into_bytes())
+            .into_report()
+            .attach_printable("Invalid path bytes")
+            .change_context(Error::InvalidArgument)?
+    };
+
+    let mut merged = TmpPath::new(dir, "merged");
+    mount(
+        Some(OVERLAY),
+        &*merged,
+        Some(OVERLAY),
+        MsFlags::empty(),
+        Some(command.as_c_str()),
+    )
+    .map_io_err_lazy(|| format!("Failed to mount directory {merged:?}"))?;
+
+    for (source, target) in [(PROC, "proc"), (DEV, "dev"), (RUN, "run"), (TMP, "tmp")] {
+        let target = TmpPath::new(&mut merged, target);
+        mount(
+            Some(source),
+            &*target,
+            None::<&str>,
+            MsFlags::MS_BIND | MsFlags::MS_REC,
+            None::<&str>,
+        )
+        .map_io_err_lazy(|| format!("Failed to mount directory {target:?}"))?;
+        mount(
+            None::<&str>,
+            &*target,
+            None::<&str>,
+            MsFlags::MS_SLAVE | MsFlags::MS_REC,
+            None::<&str>,
+        )
+        .map_io_err_lazy(|| format!("Failed to enslave mount {target:?}"))?;
+    }
+
+    Ok(())
+}
+
 fn stop_session(session: &mut PathBuf) -> Result<(), Error> {
     if !is_active_session(session, true)? {
         return Ok(());
@@ -62,11 +136,11 @@ fn stop_session(session: &mut PathBuf) -> Result<(), Error> {
 
     for target in ["proc", "dev", "run", "tmp"] {
         let target = TmpPath::new(&mut merged, target);
-        umount2(target.as_path(), MntFlags::MNT_DETACH)
+        umount2(&*target, MntFlags::MNT_DETACH)
             .map_io_err_lazy(|| format!("Failed to unmount directory {target:?}"))?;
     }
 
-    umount(merged.as_path()).map_io_err_lazy(|| format!("Failed to unmount directory {merged:?}"))
+    umount(&*merged).map_io_err_lazy(|| format!("Failed to unmount directory {merged:?}"))
 }
 
 fn delete_session(session: &Path) -> Result<(), Error> {
@@ -109,4 +183,25 @@ fn iter_op<S: AsRef<str>>(
             Ok(())
         }
     }
+}
+
+fn is_active_session(session: &mut PathBuf, must_exist: bool) -> Result<bool, Error> {
+    let mount = {
+        let merged = TmpPath::new(session, "merged");
+        match statx(cwd(), &*merged, AtFlags::empty(), StatxFlags::MNT_ID) {
+            Err(e) if !must_exist && e.kind() == ErrorKind::NotFound => {
+                return Ok(false);
+            }
+            r => r,
+        }
+        .map_io_err_lazy(|| format!("Failed to stat {merged:?}"))
+        .change_context(Error::SessionNotFound)?
+        .stx_mnt_id
+    };
+
+    let parent_mount = statx(cwd(), &*session, AtFlags::empty(), StatxFlags::MNT_ID)
+        .map_io_err_lazy(|| format!("Failed to stat {session:?}"))?
+        .stx_mnt_id;
+
+    Ok(parent_mount != mount)
 }

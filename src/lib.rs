@@ -14,15 +14,10 @@ use std::{
 
 use error_stack::{IntoReport, Result, ResultExt};
 pub use run::run;
-use rustix::{
-    fs::{cwd, statx, AtFlags, StatxFlags},
-    process::getuid,
-};
+use rustix::process::getuid;
 pub use sessions::{
     delete as delete_sessions, list as list_sessions, stop as stop_sessions, Op as SessionOperand,
 };
-
-use crate::path_undo::TmpPath;
 
 mod run;
 mod sessions;
@@ -48,32 +43,6 @@ fn get_sessions_dir() -> Result<PathBuf, Error> {
     let mut sessions_dir = dirs::cache_dir().unwrap_or_else(|| PathBuf::from("/tmp"));
     sessions_dir.push("forkfs");
     Ok(sessions_dir)
-}
-
-fn is_active_session(session: &mut PathBuf, must_exist: bool) -> Result<bool, Error> {
-    let mount = {
-        let merged = TmpPath::new(session, "merged");
-        match statx(cwd(), &*merged, AtFlags::empty(), StatxFlags::MNT_ID) {
-            Err(e) if !must_exist && e.kind() == io::ErrorKind::NotFound => {
-                return Ok(false);
-            }
-            r => r,
-        }
-        .map_io_err_lazy(|| format!("Failed to stat {merged:?}"))
-        .change_context(Error::SessionNotFound)?
-        .stx_mnt_id
-    };
-
-    let parent_mount = statx(
-        cwd(),
-        session.as_path(),
-        AtFlags::empty(),
-        StatxFlags::MNT_ID,
-    )
-    .map_io_err_lazy(|| format!("Failed to stat {session:?}"))?
-    .stx_mnt_id;
-
-    Ok(parent_mount != mount)
 }
 
 trait IoErr<Out> {

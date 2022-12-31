@@ -1,101 +1,26 @@
 use std::{
     env,
     env::{current_dir, set_current_dir},
-    ffi::{CStr, CString, OsStr},
-    fmt::Write,
-    fs,
+    ffi::OsStr,
     os::unix::{fs::chroot, process::CommandExt},
-    path::{Path, PathBuf},
+    path::Path,
     process::Command,
 };
 
-use error_stack::{IntoReport, Result, ResultExt};
-use nix::mount::{mount, MsFlags};
+use error_stack::Result;
 
-use crate::{get_sessions_dir, is_active_session, path_undo::TmpPath, Error, IoErr};
+use crate::{get_sessions_dir, sessions::maybe_create_session, Error, IoErr};
 
 pub fn run<T: AsRef<OsStr>>(session: &str, command: &[T]) -> Result<(), Error> {
     let mut session_dir = get_sessions_dir()?;
     session_dir.push(session);
 
-    if !maybe_create_session(&mut session_dir)? {
-        mount_session(&mut session_dir)?;
-    }
+    maybe_create_session(&mut session_dir)?;
 
     session_dir.push("merged");
     enter_session(&session_dir)?;
 
     run_command(command)
-}
-
-fn maybe_create_session(dir: &mut PathBuf) -> Result<bool, Error> {
-    let session_active = is_active_session(dir, false)?;
-    if !session_active {
-        for path in ["diff", "work", "merged"] {
-            let dir = TmpPath::new(dir, path);
-            fs::create_dir_all(&dir)
-                .map_io_err_lazy(|| format!("Failed to create directory {dir:?}"))?;
-        }
-    }
-    Ok(session_active)
-}
-
-fn mount_session(dir: &mut PathBuf) -> Result<(), Error> {
-    const OVERLAY: &CStr = CStr::from_bytes_with_nul(b"overlay\0").ok().unwrap();
-
-    const PROC: &CStr = CStr::from_bytes_with_nul(b"/proc\0").ok().unwrap();
-    const DEV: &CStr = CStr::from_bytes_with_nul(b"/dev\0").ok().unwrap();
-    const RUN: &CStr = CStr::from_bytes_with_nul(b"/run\0").ok().unwrap();
-    const TMP: &CStr = CStr::from_bytes_with_nul(b"/tmp\0").ok().unwrap();
-
-    let command = {
-        let mut command = String::from("lowerdir=/,");
-        {
-            let diff = TmpPath::new(dir, "diff");
-            write!(command, "upperdir={},", diff.display()).unwrap();
-        }
-        {
-            let work = TmpPath::new(dir, "work");
-            write!(command, "workdir={}", work.display()).unwrap();
-        }
-
-        CString::new(command.into_bytes())
-            .into_report()
-            .attach_printable("Invalid path bytes")
-            .change_context(Error::InvalidArgument)?
-    };
-
-    let mut merged = TmpPath::new(dir, "merged");
-    mount(
-        Some(OVERLAY),
-        &*merged,
-        Some(OVERLAY),
-        MsFlags::empty(),
-        Some(command.as_c_str()),
-    )
-    .map_io_err_lazy(|| format!("Failed to mount directory {merged:?}"))?;
-
-    for (source, target) in [(PROC, "proc"), (DEV, "dev"), (RUN, "run"), (TMP, "tmp")] {
-        let target = TmpPath::new(&mut merged, target);
-        mount(
-            Some(source),
-            &*target,
-            None::<&str>,
-            MsFlags::MS_BIND | MsFlags::MS_REC,
-            None::<&str>,
-        )
-        .map_io_err_lazy(|| format!("Failed to mount directory {target:?}"))?;
-        mount(
-            None::<&str>,
-            &*target,
-            None::<&str>,
-            MsFlags::MS_SLAVE | MsFlags::MS_REC,
-            None::<&str>,
-        )
-        .map_io_err_lazy(|| format!("Failed to enslave mount {target:?}"))?;
-    }
-
-    Ok(())
 }
 
 fn enter_session(target: &Path) -> Result<(), Error> {
