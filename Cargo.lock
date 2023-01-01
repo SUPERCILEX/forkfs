@@ -198,11 +198,9 @@ dependencies = [
  "clap",
  "dirs",
  "error-stack",
- "expect-test",
  "nix",
- "public-api",
- "rustdoc-json",
  "rustix",
+ "supercilex-tests",
  "thiserror",
 ]
 
@@ -519,6 +517,18 @@ name = "strsim"
 version = "0.10.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "73473c0e59e6d5812c5dfe2a064a6444949f089e20eec9a2e5506596494e4623"
+
+[[package]]
+name = "supercilex-tests"
+version = "0.1.1"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "4f7588b52003ba3add7caf20cef20d2c75eba3331866cd266b055935e8ac112a"
+dependencies = [
+ "clap",
+ "expect-test",
+ "public-api",
+ "rustdoc-json",
+]
 
 [[package]]
 name = "supports-color"

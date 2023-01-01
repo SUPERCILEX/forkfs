@@ -19,9 +19,7 @@ rustix = { version = "0.36.6", features = ["fs", "process"] }
 thiserror = "1.0.38"
 
 [dev-dependencies]
-expect-test = "1.4.0"
-public-api = "0.25.0"
-rustdoc-json = "0.7.4"
+supercilex-tests = "0.1.1"
 
 [profile.release]
 lto = true

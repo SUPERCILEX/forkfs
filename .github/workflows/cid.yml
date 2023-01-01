@@ -27,6 +27,8 @@ jobs:
     steps:
       - name: Checkout
         uses: actions/checkout@v3
+      - name: Install Rust
+        run: rustup component add rustfmt clippy
       - name: Cargo Cache
         uses: actions/cache@v3
         with:
@@ -41,37 +43,8 @@ jobs:
       - name: Run tests
         run: cargo test
 
-  lint:
-    runs-on: ubuntu-latest
-    steps:
-      - name: Checkout
-        uses: actions/checkout@v3
-      - name: Install Rust
-        run: rustup component add rustfmt clippy
-      - name: Cargo Cache
-        uses: actions/cache@v3
-        with:
-          path: |
-            ~/.cargo/bin/
-            ~/.cargo/registry/index/
-            ~/.cargo/registry/cache/
-            ~/.cargo/git/db/
-            target/
-          key: ${{ runner.os }}-cargo-lint-${{ hashFiles('**/Cargo.lock') }}
-          restore-keys: ${{ runner.os }}-cargo-
-      - name: Run lint
-        run: |
-          cargo fmt --check
-          cargo clippy --all-targets --all-features -- -D warnings \
-            -W clippy::all \
-            -W clippy::float_cmp_const \
-            -W clippy::empty_structs_with_brackets \
-            -W clippy::pedantic \
-            -W clippy::nursery \
-            -W clippy::cargo
-
   deploy_release:
-    needs: [build, test, lint]
+    needs: [build, test]
     runs-on: ubuntu-latest
     if: startsWith(github.ref, 'refs/tags/')
     steps:
@@ -93,7 +66,7 @@ jobs:
           - target: x86_64-unknown-linux-musl
             os: ubuntu-latest
             tool: cargo
-    needs: [build, test, lint]
+    needs: [build, test]
     runs-on: ${{ matrix.os }}
     if: startsWith(github.ref, 'refs/tags/')
     steps:
