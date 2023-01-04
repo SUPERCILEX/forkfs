@@ -6,6 +6,7 @@ use std::{
 };
 
 use clap::{ArgAction, Args, Parser, Subcommand};
+use clap2 as clap;
 use error_stack::Result;
 use forkfs::SessionOperand;
 
@@ -22,7 +23,6 @@ use forkfs::SessionOperand;
 #[command(version, author = "Alex Saveau (@SUPERCILEX)")]
 #[command(infer_subcommands = true, infer_long_args = true)]
 #[command(next_display_order = None)]
-#[command(max_term_width = 100)]
 #[command(disable_help_flag = true)]
 #[cfg_attr(test, command(help_expected = true))]
 struct ForkFs {
@@ -30,8 +30,8 @@ struct ForkFs {
     cmd: Cmd,
 
     #[arg(short, long, short_alias = '?', global = true)]
-    #[arg(action = ArgAction::Help, help = "Print help information (use `--help` for more detail)")]
-    #[arg(long_help = "Print help information (use `-h` for a summary)")]
+    #[arg(action = ArgAction::Help, help = "Print help (use `--help` for more detail)")]
+    #[arg(long_help = "Print help (use `-h` for a summary)")]
     help: Option<bool>,
 }
 
@@ -155,6 +155,6 @@ mod cli_tests {
 
     #[test]
     fn help_for_review() {
-        supercilex_tests::help_for_review(ForkFs::command());
+        supercilex_tests::help_for_review2(ForkFs::command());
     }
 }

@@ -92,6 +92,16 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "a7db700bc935f9e43e88d00b0850dae18a63773cfbec6d8e070fccf7fef89a39"
 dependencies = [
  "bitflags",
+ "clap_lex",
+]
+
+[[package]]
+name = "clap2"
+version = "4.0.32"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "2d77f5d98fe06d2365f080d2c9385fb94855ebabeccf6125862363e468799245"
+dependencies = [
+ "bitflags",
  "clap_derive",
  "clap_lex",
  "is-terminal",
@@ -195,7 +205,7 @@ dependencies = [
 name = "forkfs"
 version = "0.1.0"
 dependencies = [
- "clap",
+ "clap2",
  "dirs",
  "error-stack",
  "nix",
@@ -520,11 +530,12 @@ checksum = "73473c0e59e6d5812c5dfe2a064a6444949f089e20eec9a2e5506596494e4623"
 
 [[package]]
 name = "supercilex-tests"
-version = "0.1.1"
+version = "0.2.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "4f7588b52003ba3add7caf20cef20d2c75eba3331866cd266b055935e8ac112a"
+checksum = "5420446f4e630eaa80027047dc1167499ae0d3e92c5f6a500edaeee1b82b0d15"
 dependencies = [
  "clap",
+ "clap2",
  "expect-test",
  "public-api",
  "rustdoc-json",

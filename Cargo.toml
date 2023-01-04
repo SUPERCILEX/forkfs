@@ -10,7 +10,7 @@ categories = ["command-line-utilities", "development-tools", "development-tools:
 license = "Apache-2.0"
 
 [dependencies]
-clap = { version = "4.0.32", features = ["derive", "wrap_help"] }
+clap2 = { version = "4.0.32", features = ["derive", "wrap_help"] }
 dirs = "4.0.0"
 error-stack = "0.2.4"
 # TODO nuke once rustix has mount
@@ -19,7 +19,7 @@ rustix = { version = "0.36.6", features = ["fs", "process"] }
 thiserror = "1.0.38"
 
 [dev-dependencies]
-supercilex-tests = "0.1.1"
+supercilex-tests = "0.2.0"
 
 [profile.release]
 lto = true

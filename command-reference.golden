@@ -19,10 +19,10 @@ Commands:
 
 Options:
   -h, --help
-          Print help information (use `-h` for a summary)
+          Print help (use `-h` for a summary)
 
   -V, --version
-          Print version information
+          Print version
 
 ---
 
@@ -43,7 +43,7 @@ Options:
           [default: default]
 
   -h, --help
-          Print help information (use `-h` for a summary)
+          Print help (use `-h` for a summary)
 
 ---
 
@@ -72,7 +72,7 @@ Commands:
 
 Options:
   -h, --help
-          Print help information (use `-h` for a summary)
+          Print help (use `-h` for a summary)
 
 ---
 
@@ -84,7 +84,7 @@ Usage: forkfs sessions list
 
 Options:
   -h, --help
-          Print help information (use `-h` for a summary)
+          Print help (use `-h` for a summary)
 
 ---
 
@@ -101,7 +101,7 @@ Options:
           Operate on all sessions
 
   -h, --help
-          Print help information (use `-h` for a summary)
+          Print help (use `-h` for a summary)
 
 ---
 
@@ -118,7 +118,7 @@ Options:
           Operate on all sessions
 
   -h, --help
-          Print help information (use `-h` for a summary)
+          Print help (use `-h` for a summary)
 
 ---
 
