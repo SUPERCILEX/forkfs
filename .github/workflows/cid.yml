@@ -20,7 +20,7 @@ jobs:
           key: ${{ runner.os }}-cargo-build-${{ hashFiles('**/Cargo.lock') }}
           restore-keys: ${{ runner.os }}-cargo-
       - name: Build project
-        run: cargo build --release --all-features
+        run: cargo build --workspace --release
 
   test:
     runs-on: ubuntu-latest
@@ -41,7 +41,7 @@ jobs:
           key: ${{ runner.os }}-cargo-test-${{ hashFiles('**/Cargo.lock') }}
           restore-keys: ${{ runner.os }}-cargo-
       - name: Run tests
-        run: cargo test
+        run: cargo test --workspace
 
   deploy_release:
     needs: [build, test]
@@ -80,7 +80,7 @@ jobs:
         if: matrix.tool == 'cross'
         run: cargo install cross
       - name: Build binary
-        run: ${{ matrix.tool }} build --release --locked --target=${{ matrix.target }} -Z build-std=std,panic_abort -Z build-std-features=panic_immediate_abort
+        run: ${{ matrix.tool }} build --workspace --release --locked --target=${{ matrix.target }} -Z build-std=std,panic_abort -Z build-std-features=panic_immediate_abort
       - name: Upload binary
         uses: svenstaro/upload-release-action@v2
         with:
