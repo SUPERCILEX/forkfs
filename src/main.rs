@@ -22,7 +22,6 @@ use forkfs::SessionOperand;
 #[derive(Parser, Debug)]
 #[command(version, author = "Alex Saveau (@SUPERCILEX)")]
 #[command(infer_subcommands = true, infer_long_args = true)]
-#[command(next_display_order = None)]
 #[command(disable_help_flag = true)]
 #[cfg_attr(test, command(help_expected = true))]
 struct ForkFs {
