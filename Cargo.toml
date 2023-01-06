@@ -20,6 +20,7 @@ thiserror = "1.0.38"
 
 [dev-dependencies]
 supercilex-tests = "0.2.1"
+trycmd = "0.14.8"
 
 [profile.release]
 lto = true
