@@ -4,11 +4,11 @@ pub forkfs::Error::InvalidArgument
 pub forkfs::Error::Io
 pub forkfs::Error::NotRoot
 pub forkfs::Error::SessionNotFound
-impl core::fmt::Debug for forkfs::Error
-pub fn forkfs::Error::fmt(&self, f: &mut core::fmt::Formatter<'_>) -> core::fmt::Result
 impl core::fmt::Display for forkfs::Error
 pub fn forkfs::Error::fmt(&self, __formatter: &mut core::fmt::Formatter<'_>) -> core::fmt::Result
 impl core::error::Error for forkfs::Error
+impl core::fmt::Debug for forkfs::Error
+pub fn forkfs::Error::fmt(&self, f: &mut core::fmt::Formatter<'_>) -> core::fmt::Result
 impl core::panic::unwind_safe::RefUnwindSafe for forkfs::Error
 impl core::marker::Send for forkfs::Error
 impl core::marker::Sync for forkfs::Error
@@ -64,5 +64,5 @@ pub type forkfs::SessionOperand::Error = <U as core::convert::TryFrom<T>>::Error
 pub fn forkfs::SessionOperand::try_into(self) -> core::result::Result<U, <U as core::convert::TryFrom<T>>::Error>
 pub fn forkfs::delete_sessions<S: core::convert::AsRef<str>>(sessions: forkfs::SessionOperand<'_, S>) -> error_stack::result::Result<(), forkfs::Error>
 pub fn forkfs::list_sessions() -> error_stack::result::Result<(), forkfs::Error>
-pub fn forkfs::run<T: core::convert::AsRef<std::ffi::os_str::OsStr>>(session: &str, command: &[T]) -> error_stack::result::Result<(), forkfs::Error>
+pub fn forkfs::run<T: core::convert::AsRef<std::ffi::os_str::OsStr>>(session: &str, command: &[T], stay_root: bool) -> error_stack::result::Result<(), forkfs::Error>
 pub fn forkfs::stop_sessions<S: core::convert::AsRef<str>>(sessions: forkfs::SessionOperand<'_, S>) -> error_stack::result::Result<(), forkfs::Error>

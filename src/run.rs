@@ -11,7 +11,7 @@ use error_stack::Result;
 
 use crate::{get_sessions_dir, sessions::maybe_create_session, Error, IoErr};
 
-pub fn run<T: AsRef<OsStr>>(session: &str, command: &[T]) -> Result<(), Error> {
+pub fn run<T: AsRef<OsStr>>(session: &str, command: &[T], stay_root: bool) -> Result<(), Error> {
     let mut session_dir = get_sessions_dir()?;
     session_dir.push(session);
 
@@ -20,7 +20,7 @@ pub fn run<T: AsRef<OsStr>>(session: &str, command: &[T]) -> Result<(), Error> {
     session_dir.push("merged");
     enter_session(&session_dir)?;
 
-    run_command(command)
+    run_command(command, stay_root)
 }
 
 fn enter_session(target: &Path) -> Result<(), Error> {
@@ -32,11 +32,11 @@ fn enter_session(target: &Path) -> Result<(), Error> {
         .map_io_err_lazy(|| format!("Failed to change current directory {target:?}"))
 }
 
-fn run_command(args: &[impl AsRef<OsStr>]) -> Result<(), Error> {
+fn run_command(args: &[impl AsRef<OsStr>], stay_root: bool) -> Result<(), Error> {
     let mut command = Command::new(args[0].as_ref());
 
     // Downgrade privilege level to pre-sudo if possible
-    if let Some(uid) = env::var_os("SUDO_UID").as_ref().and_then(|s| s.to_str())
+    if !stay_root && let Some(uid) = env::var_os("SUDO_UID").as_ref().and_then(|s| s.to_str())
         && let Ok(uid) = uid.parse() {
         command.uid(uid);
     }

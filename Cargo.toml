@@ -19,7 +19,7 @@ rustix = { version = "0.36.6", features = ["fs", "process"] }
 thiserror = "1.0.38"
 
 [dev-dependencies]
-supercilex-tests = "0.2.0"
+supercilex-tests = "0.2.1"
 
 [profile.release]
 lto = true

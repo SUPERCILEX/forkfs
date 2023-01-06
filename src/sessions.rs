@@ -70,6 +70,7 @@ pub fn maybe_create_session(dir: &mut PathBuf) -> Result<(), Error> {
 }
 
 fn start_session(dir: &mut PathBuf) -> Result<(), Error> {
+    // TODO here and other uses: https://github.com/rust-lang/rust/issues/105723
     const OVERLAY: &CStr = CStr::from_bytes_with_nul(b"overlay\0").ok().unwrap();
 
     const PROC: &CStr = CStr::from_bytes_with_nul(b"/proc\0").ok().unwrap();

@@ -61,6 +61,10 @@ enum Cmd {
 #[derive(Args, Debug)]
 #[command(arg_required_else_help = true)]
 struct Run {
+    /// The command to run in isolation
+    #[arg(required = true)]
+    command: Vec<OsString>,
+
     /// The fork/sandbox to use
     ///
     /// If it does not exist or is inactive, it will be created and activated.
@@ -68,9 +72,9 @@ struct Run {
     #[arg(default_value = "default")]
     session: String,
 
-    /// The command to run in isolation
-    #[arg(required = true)]
-    command: Vec<OsString>,
+    /// Run the command with root privileges
+    #[arg(long = "stay-root", aliases = & ["stay-sudo", "keep-root", "keep-sudo"])]
+    stay_root: bool,
 }
 
 #[derive(Subcommand, Debug)]
@@ -94,13 +98,13 @@ enum Sessions {
 #[derive(Args, Debug)]
 #[command(arg_required_else_help = true)]
 struct SessionCmd {
-    /// Operate on all sessions
-    #[arg(short = 'a', long = "all", group = "names")]
-    all: bool,
-
     /// The session(s) to operate on
     #[arg(required = true, group = "names")]
     sessions: Vec<String>,
+
+    /// Operate on all sessions
+    #[arg(short = 'a', long = "all", group = "names")]
+    all: bool,
 }
 
 fn main() -> ExitCode {
@@ -122,19 +126,25 @@ fn forkfs(ForkFs { cmd, help: _ }: ForkFs) -> Result<(), forkfs::Error> {
     }
 }
 
-fn run(Run { session, command }: Run) -> Result<(), forkfs::Error> {
-    forkfs::run(&session, command.as_slice())
+fn run(
+    Run {
+        command,
+        session,
+        stay_root,
+    }: Run,
+) -> Result<(), forkfs::Error> {
+    forkfs::run(&session, command.as_slice(), stay_root)
 }
 
 fn sessions(sessions: Sessions) -> Result<(), forkfs::Error> {
     match sessions {
         Sessions::List => forkfs::list_sessions(),
-        Sessions::Stop(SessionCmd { all, sessions }) => forkfs::stop_sessions(if all {
+        Sessions::Stop(SessionCmd { sessions, all }) => forkfs::stop_sessions(if all {
             SessionOperand::All
         } else {
             SessionOperand::List(sessions.as_slice())
         }),
-        Sessions::Delete(SessionCmd { all, sessions }) => forkfs::delete_sessions(if all {
+        Sessions::Delete(SessionCmd { sessions, all }) => forkfs::delete_sessions(if all {
             SessionOperand::All
         } else {
             SessionOperand::List(sessions.as_slice())

@@ -385,9 +385,9 @@ dependencies = [
 
 [[package]]
 name = "public-api"
-version = "0.25.0"
+version = "0.26.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "88a1f38addffc7d88afde7603b4bd8f741e6854d62b17dea2f31f33c7e68a74a"
+checksum = "edd2f54c2c632d6837b7c2ae793856315da2daa866136682179fe20f2fdd2b03"
 dependencies = [
  "hashbag",
  "rustdoc-types",
@@ -449,9 +449,9 @@ dependencies = [
 
 [[package]]
 name = "rustdoc-types"
-version = "0.18.0"
+version = "0.20.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "7745b68b43d89a088d2d270be09f54f948e587fc540cb15e3d3b75cb327a01c3"
+checksum = "f5f59b848e09e1631f0f8711fcdcb65d4481597b869372cca5d6755737b21501"
 dependencies = [
  "serde",
 ]
@@ -530,9 +530,9 @@ checksum = "73473c0e59e6d5812c5dfe2a064a6444949f089e20eec9a2e5506596494e4623"
 
 [[package]]
 name = "supercilex-tests"
-version = "0.2.0"
+version = "0.2.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "5420446f4e630eaa80027047dc1167499ae0d3e92c5f6a500edaeee1b82b0d15"
+checksum = "a5157812f3763a98ab944abf57976db1a08f9a39a4e27bd2f7d9160cfa84cdfa"
 dependencies = [
  "clap",
  "clap2",

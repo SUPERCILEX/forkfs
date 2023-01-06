@@ -42,6 +42,9 @@ Options:
           
           [default: default]
 
+      --stay-root
+          Run the command with root privileges
+
   -h, --help
           Print help (use `-h` for a summary)
 
