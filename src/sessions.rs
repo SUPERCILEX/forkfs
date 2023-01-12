@@ -154,7 +154,7 @@ fn delete_session(session: &Path) -> Result<(), Error> {
 fn iter_all_sessions(
     mut f: impl FnMut(DirEntry, &mut PathBuf) -> Result<(), Error>,
 ) -> Result<(), Error> {
-    let mut sessions_dir = get_sessions_dir()?;
+    let mut sessions_dir = get_sessions_dir();
     for entry in match fs::read_dir(&sessions_dir) {
         Err(e) if e.kind() == ErrorKind::NotFound => return Ok(()),
         r => r.map_io_err_lazy(|| format!("Failed to open directory {sessions_dir:?}"))?,
@@ -176,7 +176,7 @@ fn iter_op<S: AsRef<str>>(
     match sessions {
         Op::All => iter_all_sessions(|_, session| f(session)),
         Op::List(sessions) => {
-            let mut sessions_dir = get_sessions_dir()?;
+            let mut sessions_dir = get_sessions_dir();
             for session in sessions {
                 let mut session = TmpPath::new(&mut sessions_dir, session.as_ref());
                 f(&mut session)?;

@@ -4,6 +4,7 @@ pub forkfs::Error::InvalidArgument
 pub forkfs::Error::Io
 pub forkfs::Error::NotRoot
 pub forkfs::Error::SessionNotFound
+pub forkfs::Error::SetupRequired
 impl core::fmt::Display for forkfs::Error
 pub fn forkfs::Error::fmt(&self, __formatter: &mut core::fmt::Formatter<'_>) -> core::fmt::Result
 impl core::error::Error for forkfs::Error
@@ -20,7 +21,7 @@ impl<T> core::borrow::Borrow<T> for forkfs::Error where T: core::marker::Sized
 pub fn forkfs::Error::borrow(&self) -> &T
 impl<T> core::borrow::BorrowMut<T> for forkfs::Error where T: core::marker::Sized
 pub fn forkfs::Error::borrow_mut(&mut self) -> &mut T
-impl<C> error_stack::context::Context for forkfs::Error where C: 'static + core::error::Error + core::marker::Send + core::marker::Sync
+impl<C> error_stack::context::Context for forkfs::Error where C: core::error::Error + core::marker::Send + core::marker::Sync + 'static
 pub fn forkfs::Error::provide<'a>(&'a self, demand: &mut core::any::Demand<'a>)
 impl<T> core::convert::From<T> for forkfs::Error
 pub fn forkfs::Error::from(t: T) -> T

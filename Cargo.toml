@@ -14,7 +14,7 @@ clap2 = { version = "4.0.32", features = ["derive", "wrap_help"] }
 dirs = "4.0.0"
 error-stack = "0.2.4"
 # TODO nuke once rustix has mount
-nix = { version = "0.26.1", default-features = false, features = ["mount"] }
+nix = { version = "0.26.1", default-features = false, features = ["mount", "user"] }
 rustix = { version = "0.36.6", features = ["fs", "process"] }
 thiserror = "1.0.38"
 

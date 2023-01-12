@@ -13,7 +13,6 @@ use std::{
 
 use error_stack::{IntoReport, Result, ResultExt};
 pub use run::run;
-use rustix::process::getuid;
 pub use sessions::{
     delete as delete_sessions, list as list_sessions, stop as stop_sessions, Op as SessionOperand,
 };
@@ -31,17 +30,14 @@ pub enum Error {
     NotRoot,
     #[error("Session not found.")]
     SessionNotFound,
+    #[error("Setup required.")]
+    SetupRequired,
 }
 
-fn get_sessions_dir() -> Result<PathBuf, Error> {
-    // TODO check capabilities instead once in rustix
-    if !getuid().is_root() {
-        return Err(Error::NotRoot).into_report();
-    }
-
+fn get_sessions_dir() -> PathBuf {
     let mut sessions_dir = dirs::cache_dir().unwrap_or_else(|| PathBuf::from("/tmp"));
     sessions_dir.push("forkfs");
-    Ok(sessions_dir)
+    sessions_dir
 }
 
 trait IoErr<Out> {

@@ -29,7 +29,7 @@ $ cargo +nightly install forkfs
 Run a command in the sandbox:
 
 ```sh
-$ sudo forkfs run -- <your command>
+$ forkfs run -- <your command>
 ```
 
 All file system changes the command makes will only exist within the sandbox and will not modify
@@ -38,12 +38,8 @@ your real file system.
 You can also start a bash shell wherein any command you execute has its file operations sandboxed:
 
 ```sh
-$ sudo -E forkfs run bash
+$ forkfs run bash
 ```
-
-> Note: be consistent with your usage of `-E`. Bare `sudo` vs `sudo -E` will likely change the
-> forkfs environment, meaning sessions that appear in `sudo` will not appear in `sudo -E` and vice
-> versa.
 
 More details:
 
@@ -51,10 +47,9 @@ More details:
 $ forkfs --help
 A sandboxing file system emulator
 
-Under the hood, `ForkFS` creates an `OverlayFS` per session. `ForkFS` must therefore be run as sudo
-to create these new mount points.
+Under the hood, ForkFS is implemented as a light-weight wrapper around OverlayFS.
 
-Note: we make no security claims. Do NOT use this tool with potentially malicious software.
+Warning: we make no security claims. Do NOT use this tool with potentially malicious software.
 
 PS: you might also be interested in Firejail: <https://firejail.wordpress.com/>.
 

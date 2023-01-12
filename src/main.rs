@@ -10,12 +10,13 @@ use clap2 as clap;
 use error_stack::Result;
 use forkfs::SessionOperand;
 
+#[allow(clippy::doc_markdown)]
 /// A sandboxing file system emulator
 ///
-/// Under the hood, `ForkFS` creates an `OverlayFS` per session. `ForkFS` must
-/// therefore be run as sudo to create these new mount points.
+/// Under the hood, ForkFS is implemented as a light-weight wrapper around
+/// OverlayFS.
 ///
-/// Note: we make no security claims. Do NOT use this tool with potentially
+/// Warning: we make no security claims. Do NOT use this tool with potentially
 /// malicious software.
 ///
 /// PS: you might also be interested in Firejail: <https://firejail.wordpress.com/>.
@@ -72,6 +73,8 @@ struct Run {
     session: String,
 
     /// Run the command with root privileges
+    ///
+    /// Note: this flag only applies when running as root.
     #[arg(long = "stay-root", aliases = & ["stay-sudo", "keep-root", "keep-sudo"])]
     stay_root: bool,
 }

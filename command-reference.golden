@@ -1,9 +1,8 @@
 A sandboxing file system emulator
 
-Under the hood, `ForkFS` creates an `OverlayFS` per session. `ForkFS` must therefore be run as sudo
-to create these new mount points.
+Under the hood, ForkFS is implemented as a light-weight wrapper around OverlayFS.
 
-Note: we make no security claims. Do NOT use this tool with potentially malicious software.
+Warning: we make no security claims. Do NOT use this tool with potentially malicious software.
 
 PS: you might also be interested in Firejail: <https://firejail.wordpress.com/>.
 
@@ -44,6 +43,8 @@ Options:
 
       --stay-root
           Run the command with root privileges
+          
+          Note: this flag only applies when running as root.
 
   -h, --help
           Print help (use `-h` for a summary)
