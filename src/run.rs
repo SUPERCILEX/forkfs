@@ -86,9 +86,9 @@ fn validate_permissions(uid: Uid) -> Result<(), Error> {
         .attach_printable(format!(
             "Welcome to ForkFS!
 
-Under the hood, ForkFS is implemented as a light-weight wrapper around
-OverlayFS. As a consequence, elevated privileges are required and can be
-granted in one of three ways (ordered by recommendation):
+Under the hood, ForkFS is implemented as a wrapper around OverlayFS. As a
+consequence, elevated privileges are required and can be granted in one of
+three ways (ordered by recommendation):
 
 - $ sudo chown root {0} && sudo chmod u+s {0}
 
