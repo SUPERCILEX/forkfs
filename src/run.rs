@@ -9,8 +9,11 @@ use std::{
 };
 
 use error_stack::{IntoReport, Result, ResultExt};
-use nix::{errno::Errno, unistd::setuid};
-use rustix::process::{getuid, Uid};
+use rustix::{
+    io::Errno,
+    process::{getuid, Uid},
+    thread::{capabilities, set_thread_uid, CapabilityFlags},
+};
 
 use crate::{get_sessions_dir, sessions::maybe_create_session, Error, IoErr};
 
@@ -64,16 +67,28 @@ fn validate_permissions(uid: Uid) -> Result<(), Error> {
         return Ok(());
     }
 
-    {
-        let result = setuid(nix::unistd::Uid::from(0));
-        if result == Err(Errno::EPERM) {
+    match set_thread_uid(Uid::ROOT) {
+        Err(Errno::PERM) => {
             // Continue to capability check
-        } else {
-            return result.map_io_err("Failed to become root");
+        }
+        r => {
+            return r.map_io_err("Failed to become root");
         }
     }
 
-    // TODO check effective capabilities
+    {
+        let effective_capabilities = capabilities(None)
+            .map_io_err("Failed to retrieve capabilities")?
+            .effective;
+        if effective_capabilities.contains(
+            CapabilityFlags::DAC_OVERRIDE
+                | CapabilityFlags::SYS_CHROOT
+                | CapabilityFlags::SYS_ADMIN,
+        ) {
+            return Ok(());
+        }
+    }
+
     let path = env::args_os().next().map(PathBuf::from);
     let path = fs::canonicalize(path.as_deref().unwrap_or_else(|| Path::new("forkfs")));
     let path = path
@@ -81,7 +96,7 @@ fn validate_permissions(uid: Uid) -> Result<(), Error> {
         .ok()
         .unwrap_or_else(|| Path::new("<path-to-forkfs>"));
 
-    return Err(Error::SetupRequired)
+    Err(Error::SetupRequired)
         .into_report()
         .attach_printable(format!(
             "Welcome to ForkFS!
@@ -115,5 +130,5 @@ three ways (ordered by recommendation):
 PS: if you've already seen this message, then you probably upgraded to a new
 version of ForkFS and will therefore need to rerun this setup.",
             path.to_string_lossy()
-        ));
+        ))
 }

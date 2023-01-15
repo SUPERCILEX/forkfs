@@ -27,7 +27,6 @@ impl<T> core::convert::From<T> for forkfs::Error
 pub fn forkfs::Error::from(t: T) -> T
 impl<T, U> core::convert::Into<U> for forkfs::Error where U: core::convert::From<T>
 pub fn forkfs::Error::into(self) -> U
-impl<D> owo_colors::OwoColorize for forkfs::Error
 impl<E> core::any::Provider for forkfs::Error where E: core::error::Error + core::marker::Sized
 pub fn forkfs::Error::provide<'a>(&'a self, demand: &mut core::any::Demand<'a>)
 impl<T> alloc::string::ToString for forkfs::Error where T: core::fmt::Display + core::marker::Sized
@@ -56,7 +55,6 @@ impl<T> core::convert::From<T> for forkfs::SessionOperand<'a, S>
 pub fn forkfs::SessionOperand::from(t: T) -> T
 impl<T, U> core::convert::Into<U> for forkfs::SessionOperand<'a, S> where U: core::convert::From<T>
 pub fn forkfs::SessionOperand::into(self) -> U
-impl<D> owo_colors::OwoColorize for forkfs::SessionOperand<'a, S>
 impl<T, U> core::convert::TryFrom<U> for forkfs::SessionOperand<'a, S> where U: core::convert::Into<T>
 pub type forkfs::SessionOperand::Error = core::convert::Infallible
 pub fn forkfs::SessionOperand::try_from(value: U) -> core::result::Result<T, <T as core::convert::TryFrom<U>>::Error>

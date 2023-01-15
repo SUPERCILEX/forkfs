@@ -10,8 +10,10 @@ use std::{
 };
 
 use error_stack::{IntoReport, Result, ResultExt};
-use nix::mount::{mount, umount, umount2, MntFlags, MsFlags};
-use rustix::fs::{cwd, statx, AtFlags, StatxFlags};
+use rustix::fs::{
+    change_mount, cwd, mount, recursive_bind_mount, statx, unmount, AtFlags, MountFlags,
+    MountPropagationFlags, StatxFlags, UnmountFlags,
+};
 
 use crate::{get_sessions_dir, path_undo::TmpPath, Error, IoErr};
 
@@ -97,30 +99,21 @@ fn start_session(dir: &mut PathBuf) -> Result<(), Error> {
 
     let mut merged = TmpPath::new(dir, "merged");
     mount(
-        Some(OVERLAY),
+        OVERLAY,
         &*merged,
-        Some(OVERLAY),
-        MsFlags::empty(),
-        Some(command.as_c_str()),
+        OVERLAY,
+        MountFlags::empty(),
+        command.as_c_str(),
     )
     .map_io_err_lazy(|| format!("Failed to mount directory {merged:?}"))?;
 
     for (source, target) in [(PROC, "proc"), (DEV, "dev"), (RUN, "run"), (TMP, "tmp")] {
         let target = TmpPath::new(&mut merged, target);
-        mount(
-            Some(source),
+        recursive_bind_mount(source, &*target)
+            .map_io_err_lazy(|| format!("Failed to bind mount directory {target:?}"))?;
+        change_mount(
             &*target,
-            None::<&str>,
-            MsFlags::MS_BIND | MsFlags::MS_REC,
-            None::<&str>,
-        )
-        .map_io_err_lazy(|| format!("Failed to mount directory {target:?}"))?;
-        mount(
-            None::<&str>,
-            &*target,
-            None::<&str>,
-            MsFlags::MS_SLAVE | MsFlags::MS_REC,
-            None::<&str>,
+            MountPropagationFlags::SLAVE | MountPropagationFlags::REC,
         )
         .map_io_err_lazy(|| format!("Failed to enslave mount {target:?}"))?;
     }
@@ -137,11 +130,12 @@ fn stop_session(session: &mut PathBuf) -> Result<(), Error> {
 
     for target in ["proc", "dev", "run", "tmp"] {
         let target = TmpPath::new(&mut merged, target);
-        umount2(&*target, MntFlags::MNT_DETACH)
+        unmount(&*target, UnmountFlags::DETACH)
             .map_io_err_lazy(|| format!("Failed to unmount directory {target:?}"))?;
     }
 
-    umount(&*merged).map_io_err_lazy(|| format!("Failed to unmount directory {merged:?}"))
+    unmount(&*merged, UnmountFlags::empty())
+        .map_io_err_lazy(|| format!("Failed to unmount directory {merged:?}"))
 }
 
 fn delete_session(session: &Path) -> Result<(), Error> {

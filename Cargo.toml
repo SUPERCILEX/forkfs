@@ -12,15 +12,14 @@ license = "Apache-2.0"
 [dependencies]
 clap2 = { version = "4.0.32", features = ["derive", "wrap_help"] }
 dirs = "4.0.0"
-error-stack = "0.2.4"
-# TODO nuke once rustix has mount
-nix = { version = "0.26.1", default-features = false, features = ["mount", "user"] }
-rustix = { version = "0.36.6", features = ["fs", "process"] }
+error-stack = "0.3.0"
+# TODO faster statx
+rustix = { version = "0.36.6", features = ["fs", "process", "thread"], git = "https://github.com/bytecodealliance/rustix" }
 thiserror = "1.0.38"
 
 [dev-dependencies]
-supercilex-tests = "0.2.1"
-trycmd = "0.14.8"
+supercilex-tests = "0.2.2"
+trycmd = "0.14.11"
 
 [profile.release]
 lto = true

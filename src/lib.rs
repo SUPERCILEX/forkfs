@@ -79,19 +79,6 @@ impl<T> IoErr<Result<T, Error>> for std::result::Result<T, rustix::io::Errno> {
     }
 }
 
-impl<T> IoErr<Result<T, Error>> for std::result::Result<T, nix::Error> {
-    fn map_io_err_lazy<P: Display + Debug + Send + Sync + 'static>(
-        self,
-        f: impl FnOnce() -> P,
-    ) -> Result<T, Error> {
-        self.map_err(io::Error::from).map_io_err_lazy(f)
-    }
-
-    fn map_io_err<P: Display + Debug + Send + Sync + 'static>(self, p: P) -> Result<T, Error> {
-        self.map_err(io::Error::from).map_io_err(p)
-    }
-}
-
 mod path_undo {
     use std::{
         fmt::{Debug, Formatter},
