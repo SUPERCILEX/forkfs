@@ -81,7 +81,8 @@ fn validate_permissions(uid: Uid) -> Result<(), Error> {
             .map_io_err("Failed to retrieve capabilities")?
             .effective;
         if effective_capabilities.contains(
-            CapabilityFlags::DAC_OVERRIDE
+            CapabilityFlags::CHOWN
+                | CapabilityFlags::DAC_OVERRIDE
                 | CapabilityFlags::SYS_CHROOT
                 | CapabilityFlags::SYS_ADMIN,
         ) {
@@ -112,7 +113,7 @@ three ways (ordered by recommendation):
   because it allows you to pass along root privileges to the sandboxed
   program when necessary.
 
-- $ sudo setcap cap_dac_override,cap_sys_chroot,cap_sys_admin+ep {0}
+- $ sudo setcap cap_chown,cap_dac_override,cap_sys_chroot,cap_sys_admin+ep {0}
 
   This grants `forkfs` precisely the capabilities it needs. Note that the
   `stay-root` flag will not work.
