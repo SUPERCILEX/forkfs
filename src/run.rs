@@ -104,7 +104,7 @@ Under the hood, ForkFS is implemented as a wrapper around OverlayFS. As a
 consequence, elevated privileges are required and can be granted in one of
 three ways (ordered by recommendation):
 
-- $ sudo chown root {0} && sudo chmod u+s {0}
+- $ sudo chown root {0}; sudo chmod u+s {0}
 
   This transfers ownership of the `forkfs` binary to root and specifies that
   the binary should be executed as its owner (i.e. root). This is preferable
