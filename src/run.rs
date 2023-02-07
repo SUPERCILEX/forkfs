@@ -1,15 +1,15 @@
 use std::{
     env,
     env::{current_dir, set_current_dir},
-    ffi::OsStr,
-    fs,
+    ffi::{CStr, OsStr},
     os::unix::{fs::chroot, process::CommandExt},
-    path::{Path, PathBuf},
+    path::Path,
     process::Command,
 };
 
 use error_stack::{IntoReport, Result, ResultExt};
 use rustix::{
+    fs::{cwd, readlinkat},
     io::Errno,
     process::{getuid, Uid},
     thread::{capabilities, set_thread_uid, CapabilityFlags},
@@ -90,13 +90,11 @@ fn validate_permissions(uid: Uid) -> Result<(), Error> {
         }
     }
 
-    let path = env::args_os().next().map(PathBuf::from);
-    let path = fs::canonicalize(path.as_deref().unwrap_or_else(|| Path::new("forkfs")));
-    let path = path
-        .as_deref()
-        .ok()
-        .unwrap_or_else(|| Path::new("<path-to-forkfs>"));
+    let path = readlinkat(cwd(), "/proc/self/exe", Vec::new());
+    let path = path.as_deref().map(CStr::to_string_lossy);
+    let path = path.as_deref().ok().unwrap_or("<path-to-forkfs>");
 
+    #[allow(clippy::uninlined_format_args)]
     Err(Error::SetupRequired)
         .into_report()
         .attach_printable(format!(
@@ -130,6 +128,6 @@ three ways (ordered by recommendation):
 
 PS: if you've already seen this message, then you probably upgraded to a new
 version of ForkFS and will therefore need to rerun this setup.",
-            path.to_string_lossy()
+            path,
         ))
 }
