@@ -299,7 +299,7 @@ dependencies = [
  "dirs",
  "error-stack",
  "fuc_engine",
- "rustix 0.36.6",
+ "rustix 0.37.0-alpha.0",
  "supercilex-tests",
  "thiserror",
  "trycmd",
@@ -673,19 +673,6 @@ dependencies = [
 
 [[package]]
 name = "rustix"
-version = "0.36.6"
-source = "git+https://github.com/bytecodealliance/rustix#7bc7d2516c7906dfc80652b979e83e4b9e576dd6"
-dependencies = [
- "bitflags",
- "errno",
- "io-lifetimes",
- "libc",
- "linux-raw-sys 0.2.2",
- "windows-sys 0.45.0",
-]
-
-[[package]]
-name = "rustix"
 version = "0.36.8"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "f43abb88211988493c1abb44a70efa56ff0ce98f233b7b276146f1f3f7ba9644"
@@ -695,6 +682,20 @@ dependencies = [
  "io-lifetimes",
  "libc",
  "linux-raw-sys 0.1.4",
+ "windows-sys 0.45.0",
+]
+
+[[package]]
+name = "rustix"
+version = "0.37.0-alpha.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "54c62f3101a33faf489242c5bcc6c85c41231fddb59000421d0ba813e6020ef9"
+dependencies = [
+ "bitflags",
+ "errno",
+ "io-lifetimes",
+ "libc",
+ "linux-raw-sys 0.2.2",
  "windows-sys 0.45.0",
 ]
 
