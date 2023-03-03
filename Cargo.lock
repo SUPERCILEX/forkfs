@@ -327,7 +327,7 @@ dependencies = [
 
 [[package]]
 name = "forkfs"
-version = "0.2.2"
+version = "0.2.3"
 dependencies = [
  "clap2",
  "dirs",
