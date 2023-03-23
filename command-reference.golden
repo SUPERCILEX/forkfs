@@ -44,11 +44,6 @@ Options:
           
           [default: default]
 
-      --stay-root
-          Run the command with root privileges
-          
-          Note: this flag only applies when running as root.
-
   -h, --help
           Print help (use `-h` for a summary)
 

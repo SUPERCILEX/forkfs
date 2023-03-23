@@ -22,7 +22,6 @@ Arguments:
 
 Options:
   -s, --session <SESSION>  The fork/sandbox to use [default: default]
-      --stay-root          Run the command with root privileges
   -h, --help               Print help (use `--help` for more detail)
 
 ---

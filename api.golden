@@ -63,5 +63,5 @@ impl<T> core::convert::From<T> for forkfs::SessionOperand<'a, S>
 pub fn forkfs::SessionOperand::from(t: T) -> T
 pub fn forkfs::delete_sessions<S: core::convert::AsRef<str>>(sessions: forkfs::SessionOperand<'_, S>) -> error_stack::result::Result<(), forkfs::Error>
 pub fn forkfs::list_sessions() -> error_stack::result::Result<(), forkfs::Error>
-pub fn forkfs::run<T: core::convert::AsRef<std::ffi::os_str::OsStr>>(session: &str, command: &[T], stay_root: bool) -> error_stack::result::Result<(), forkfs::Error>
+pub fn forkfs::run<T: core::convert::AsRef<std::ffi::os_str::OsStr>>(session: &str, command: &[T]) -> error_stack::result::Result<(), forkfs::Error>
 pub fn forkfs::stop_sessions<S: core::convert::AsRef<str>>(sessions: forkfs::SessionOperand<'_, S>) -> error_stack::result::Result<(), forkfs::Error>

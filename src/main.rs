@@ -74,12 +74,6 @@ struct Run {
     #[arg(short = 's', long = "session", short_alias = 'n', aliases = & ["name", "id"])]
     #[arg(default_value = "default")]
     session: String,
-
-    /// Run the command with root privileges
-    ///
-    /// Note: this flag only applies when running as root.
-    #[arg(long = "stay-root", aliases = & ["stay-sudo", "keep-root", "keep-sudo"])]
-    stay_root: bool,
 }
 
 #[derive(Subcommand, Debug)]
@@ -131,14 +125,8 @@ fn forkfs(ForkFs { cmd, help: _ }: ForkFs) -> Result<(), forkfs::Error> {
     }
 }
 
-fn run(
-    Run {
-        command,
-        session,
-        stay_root,
-    }: Run,
-) -> Result<(), forkfs::Error> {
-    forkfs::run(&session, command.as_slice(), stay_root)
+fn run(Run { command, session }: Run) -> Result<(), forkfs::Error> {
+    forkfs::run(&session, command.as_slice())
 }
 
 fn sessions(sessions: Sessions) -> Result<(), forkfs::Error> {

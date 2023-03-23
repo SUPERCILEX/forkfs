@@ -17,7 +17,7 @@ use rustix::{
 
 use crate::{get_sessions_dir, sessions::maybe_create_session, Error, IoErr};
 
-pub fn run<T: AsRef<OsStr>>(session: &str, command: &[T], stay_root: bool) -> Result<(), Error> {
+pub fn run<T: AsRef<OsStr>>(session: &str, command: &[T]) -> Result<(), Error> {
     let uid = getuid();
     validate_permissions(uid)?;
 
@@ -29,7 +29,7 @@ pub fn run<T: AsRef<OsStr>>(session: &str, command: &[T], stay_root: bool) -> Re
     session_dir.push("merged");
     enter_session(&session_dir)?;
 
-    run_command(command, uid, stay_root)
+    run_command(command, uid)
 }
 
 fn enter_session(target: &Path) -> Result<(), Error> {
@@ -41,17 +41,15 @@ fn enter_session(target: &Path) -> Result<(), Error> {
         .map_io_err_lazy(|| format!("Failed to change current directory {target:?}"))
 }
 
-fn run_command(args: &[impl AsRef<OsStr>], prev_uid: Uid, stay_root: bool) -> Result<(), Error> {
+fn run_command(args: &[impl AsRef<OsStr>], prev_uid: Uid) -> Result<(), Error> {
     let mut command = Command::new(args[0].as_ref());
 
     // Downgrade privilege level to pre-sudo if possible
-    if !stay_root {
-        if !prev_uid.is_root() {
-            command.uid(prev_uid.as_raw());
-        } else if let Some(uid) = env::var_os("SUDO_UID").as_ref().and_then(|s| s.to_str())
-            && let Ok(uid) = uid.parse() {
-            command.uid(uid);
-        }
+    if !prev_uid.is_root() {
+        command.uid(prev_uid.as_raw());
+    } else if let Some(uid) = env::var_os("SUDO_UID").as_ref().and_then(|s| s.to_str())
+        && let Ok(uid) = uid.parse() {
+        command.uid(uid);
     }
 
     Err(command.args(&args[1..]).exec()).map_io_err_lazy(|| {
@@ -81,10 +79,7 @@ fn validate_permissions(uid: Uid) -> Result<(), Error> {
             .map_io_err("Failed to retrieve capabilities")?
             .effective;
         if effective_capabilities.contains(
-            CapabilityFlags::CHOWN
-                | CapabilityFlags::DAC_OVERRIDE
-                | CapabilityFlags::SYS_CHROOT
-                | CapabilityFlags::SYS_ADMIN,
+            CapabilityFlags::CHOWN | CapabilityFlags::SYS_CHROOT | CapabilityFlags::SYS_ADMIN,
         ) {
             return Ok(());
         }
@@ -104,17 +99,19 @@ Under the hood, ForkFS is implemented as a wrapper around OverlayFS. As a
 consequence, elevated privileges are required and can be granted in one of
 three ways (ordered by recommendation):
 
+- $ sudo setcap \
+             cap_chown,cap_sys_chroot,cap_sys_admin,cap_dac_override,cap_fowner,cap_setpcap,\
+             cap_mknod,cap_lease,cap_setfcap+ep {0}
+
+  This grants `forkfs` precisely the capabilities it needs.
+
+  cap_dac_override onwards are capabilities that are required for OverlayFS to
+  be able to perform those actions.
+
 - $ sudo chown root {0}; sudo chmod u+s {0}
 
   This transfers ownership of the `forkfs` binary to root and specifies that
-  the binary should be executed as its owner (i.e. root). This is preferable
-  because it allows you to pass along root privileges to the sandboxed
-  program when necessary.
-
-- $ sudo setcap cap_chown,cap_dac_override,cap_sys_chroot,cap_sys_admin+ep {0}
-
-  This grants `forkfs` precisely the capabilities it needs. Note that the
-  `stay-root` flag will not work.
+  the binary should be executed as its owner (i.e. root).
 
 - $ sudo -E forkfs ...
 
