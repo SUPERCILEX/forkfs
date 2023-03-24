@@ -1,6 +1,6 @@
 [package]
 name = "forkfs"
-version = "0.2.4"
+version = "0.2.5"
 authors = ["Alex Saveau <saveau.alexandre@gmail.com>"]
 edition = "2021"
 description = "ForkFS allows you to sandbox a process's changes to your file system."
@@ -13,7 +13,7 @@ license = "Apache-2.0"
 clap2 = { version = "4.1.8", features = ["derive", "wrap_help"] }
 dirs = "5.0.0"
 error-stack = "0.3.1"
-fuc_engine = "1.1.5"
+fuc_engine = "1.1.6"
 rustix = { version = "0.37.3", features = ["fs", "process", "thread", "linux_latest"] }
 thiserror = "1.0.40"
 
