@@ -1,8 +1,6 @@
 #![feature(let_chains)]
-#![feature(const_option)]
-#![feature(const_result_drop)]
-#![feature(const_cstr_methods)]
 #![feature(dir_entry_ext2)]
+#![feature(c_str_literals)]
 #![allow(clippy::missing_errors_doc)]
 
 use std::{

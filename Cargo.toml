@@ -11,15 +11,15 @@ license = "Apache-2.0"
 
 [dependencies]
 clap2 = { version = "4.1.8", features = ["derive", "wrap_help"] }
-dirs = "5.0.0"
+dirs = "5.0.1"
 error-stack = "0.3.1"
-fuc_engine = "1.1.6"
-rustix = { version = "0.37.3", features = ["fs", "process", "thread", "linux_latest"] }
+fuc_engine = "1.1.7"
+rustix = { version = "0.37.19", features = ["fs", "process", "thread", "linux_latest"] }
 thiserror = "1.0.40"
 
 [dev-dependencies]
-supercilex-tests = "0.3.1"
-trycmd = "0.14.15"
+supercilex-tests = "0.3.2"
+trycmd = "0.14.16"
 
 [profile.release]
 lto = true

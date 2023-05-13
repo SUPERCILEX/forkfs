@@ -1,5 +1,5 @@
 use std::{
-    ffi::{CStr, CString},
+    ffi::CString,
     fmt::Write as FmtWrite,
     fs,
     fs::DirEntry,
@@ -72,14 +72,6 @@ pub fn maybe_create_session(dir: &mut PathBuf) -> Result<(), Error> {
 }
 
 fn start_session(dir: &mut PathBuf) -> Result<(), Error> {
-    // TODO here and other uses: https://github.com/rust-lang/rust/issues/105723
-    const OVERLAY: &CStr = CStr::from_bytes_with_nul(b"overlay\0").ok().unwrap();
-
-    const PROC: &CStr = CStr::from_bytes_with_nul(b"/proc\0").ok().unwrap();
-    const DEV: &CStr = CStr::from_bytes_with_nul(b"/dev\0").ok().unwrap();
-    const RUN: &CStr = CStr::from_bytes_with_nul(b"/run\0").ok().unwrap();
-    const TMP: &CStr = CStr::from_bytes_with_nul(b"/tmp\0").ok().unwrap();
-
     let command = {
         let mut command = String::from("lowerdir=/,");
         {
@@ -99,15 +91,20 @@ fn start_session(dir: &mut PathBuf) -> Result<(), Error> {
 
     let mut merged = TmpPath::new(dir, "merged");
     mount(
-        OVERLAY,
+        c"overlay",
         &*merged,
-        OVERLAY,
+        c"overlay",
         MountFlags::empty(),
         command.as_c_str(),
     )
     .map_io_err_lazy(|| format!("Failed to mount directory {merged:?}"))?;
 
-    for (source, target) in [(PROC, "proc"), (DEV, "dev"), (RUN, "run"), (TMP, "tmp")] {
+    for (source, target) in [
+        (c"/proc", "proc"),
+        (c"/dev", "dev"),
+        (c"/run", "run"),
+        (c"/tmp", "tmp"),
+    ] {
         let target = TmpPath::new(&mut merged, target);
         recursive_bind_mount(source, &*target)
             .map_io_err_lazy(|| format!("Failed to bind mount directory {target:?}"))?;
