@@ -6,7 +6,6 @@ use std::{
 };
 
 use clap::{ArgAction, Args, Parser, Subcommand};
-use clap2 as clap;
 use error_stack::Result;
 use forkfs::SessionOperand;
 
@@ -27,6 +26,7 @@ use forkfs::SessionOperand;
 #[command(version, author = "Alex Saveau (@SUPERCILEX)")]
 #[command(infer_subcommands = true, infer_long_args = true)]
 #[command(disable_help_flag = true)]
+#[command(max_term_width = 100)]
 #[cfg_attr(test, command(help_expected = true))]
 struct ForkFs {
     #[command(subcommand)]

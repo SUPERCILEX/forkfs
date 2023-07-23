@@ -9,7 +9,7 @@ use std::{
     path::PathBuf,
 };
 
-use error_stack::{IntoReport, Result, ResultExt};
+use error_stack::{Result, ResultExt};
 pub use run::run;
 pub use sessions::{
     delete as delete_sessions, list as list_sessions, stop as stop_sessions, Op as SessionOperand,
@@ -52,15 +52,11 @@ impl<T> IoErr<Result<T, Error>> for io::Result<T> {
         self,
         f: impl FnOnce() -> P,
     ) -> Result<T, Error> {
-        self.into_report()
-            .attach_printable_lazy(f)
-            .change_context(Error::Io)
+        self.attach_printable_lazy(f).change_context(Error::Io)
     }
 
     fn map_io_err<P: Display + Debug + Send + Sync + 'static>(self, p: P) -> Result<T, Error> {
-        self.into_report()
-            .attach_printable(p)
-            .change_context(Error::Io)
+        self.attach_printable(p).change_context(Error::Io)
     }
 }
 

@@ -9,10 +9,10 @@ use std::{
     path::{Path, PathBuf},
 };
 
-use error_stack::{IntoReport, Result, ResultExt};
+use error_stack::{Result, ResultExt};
 use rustix::fs::{
-    change_mount, cwd, mount, recursive_bind_mount, statx, unmount, AtFlags, MountFlags,
-    MountPropagationFlags, StatxFlags, UnmountFlags,
+    change_mount, mount, recursive_bind_mount, statx, unmount, AtFlags, MountFlags,
+    MountPropagationFlags, StatxFlags, UnmountFlags, CWD,
 };
 
 use crate::{get_sessions_dir, path_undo::TmpPath, Error, IoErr};
@@ -84,7 +84,6 @@ fn start_session(dir: &mut PathBuf) -> Result<(), Error> {
         }
 
         CString::new(command.into_bytes())
-            .into_report()
             .attach_printable("Invalid path bytes")
             .change_context(Error::InvalidArgument)?
     };
@@ -137,7 +136,6 @@ fn stop_session(session: &mut PathBuf) -> Result<(), Error> {
 
 fn delete_session(session: &Path) -> Result<(), Error> {
     fuc_engine::remove_dir_all(session)
-        .into_report()
         .attach_printable_lazy(|| format!("Failed to delete directory {session:?}"))
         .change_context(Error::Io)
 }
@@ -180,7 +178,7 @@ fn iter_op<S: AsRef<str>>(
 fn is_active_session(session: &mut PathBuf, must_exist: bool) -> Result<bool, Error> {
     let mount = {
         let merged = TmpPath::new(session, "merged");
-        match statx(cwd(), &*merged, AtFlags::empty(), StatxFlags::MNT_ID) {
+        match statx(CWD, &*merged, AtFlags::empty(), StatxFlags::MNT_ID) {
             Err(e) if !must_exist && e.kind() == ErrorKind::NotFound => {
                 return Ok(false);
             }
@@ -191,7 +189,7 @@ fn is_active_session(session: &mut PathBuf, must_exist: bool) -> Result<bool, Er
         .stx_mnt_id
     };
 
-    let parent_mount = statx(cwd(), &*session, AtFlags::empty(), StatxFlags::MNT_ID)
+    let parent_mount = statx(CWD, &*session, AtFlags::empty(), StatxFlags::MNT_ID)
         .map_io_err_lazy(|| format!("Failed to stat {session:?}"))?
         .stx_mnt_id;
 

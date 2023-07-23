@@ -16,9 +16,7 @@ impl core::marker::Unpin for forkfs::Error
 impl core::panic::unwind_safe::RefUnwindSafe for forkfs::Error
 impl core::panic::unwind_safe::UnwindSafe for forkfs::Error
 impl<C> error_stack::context::Context for forkfs::Error where C: core::error::Error + core::marker::Send + core::marker::Sync + 'static
-pub fn forkfs::Error::provide<'a>(&'a self, demand: &mut core::any::Demand<'a>)
-impl<E> core::any::Provider for forkfs::Error where E: core::error::Error + core::marker::Sized
-pub fn forkfs::Error::provide<'a>(&'a self, demand: &mut core::any::Demand<'a>)
+pub fn forkfs::Error::provide<'a>(&'a self, request: &mut core::error::Request<'a>)
 impl<T, U> core::convert::Into<U> for forkfs::Error where U: core::convert::From<T>
 pub fn forkfs::Error::into(self) -> U
 impl<T, U> core::convert::TryFrom<U> for forkfs::Error where U: core::convert::Into<T>
@@ -46,21 +44,21 @@ impl<'a, S> core::marker::Unpin for forkfs::SessionOperand<'a, S>
 impl<'a, S> core::panic::unwind_safe::RefUnwindSafe for forkfs::SessionOperand<'a, S> where S: core::panic::unwind_safe::RefUnwindSafe
 impl<'a, S> core::panic::unwind_safe::UnwindSafe for forkfs::SessionOperand<'a, S> where S: core::panic::unwind_safe::RefUnwindSafe
 impl<T, U> core::convert::Into<U> for forkfs::SessionOperand<'a, S> where U: core::convert::From<T>
-pub fn forkfs::SessionOperand::into(self) -> U
+pub fn forkfs::SessionOperand<'a, S>::into(self) -> U
 impl<T, U> core::convert::TryFrom<U> for forkfs::SessionOperand<'a, S> where U: core::convert::Into<T>
-pub type forkfs::SessionOperand::Error = core::convert::Infallible
-pub fn forkfs::SessionOperand::try_from(value: U) -> core::result::Result<T, <T as core::convert::TryFrom<U>>::Error>
+pub type forkfs::SessionOperand<'a, S>::Error = core::convert::Infallible
+pub fn forkfs::SessionOperand<'a, S>::try_from(value: U) -> core::result::Result<T, <T as core::convert::TryFrom<U>>::Error>
 impl<T, U> core::convert::TryInto<U> for forkfs::SessionOperand<'a, S> where U: core::convert::TryFrom<T>
-pub type forkfs::SessionOperand::Error = <U as core::convert::TryFrom<T>>::Error
-pub fn forkfs::SessionOperand::try_into(self) -> core::result::Result<U, <U as core::convert::TryFrom<T>>::Error>
+pub type forkfs::SessionOperand<'a, S>::Error = <U as core::convert::TryFrom<T>>::Error
+pub fn forkfs::SessionOperand<'a, S>::try_into(self) -> core::result::Result<U, <U as core::convert::TryFrom<T>>::Error>
 impl<T> core::any::Any for forkfs::SessionOperand<'a, S> where T: 'static + core::marker::Sized
-pub fn forkfs::SessionOperand::type_id(&self) -> core::any::TypeId
+pub fn forkfs::SessionOperand<'a, S>::type_id(&self) -> core::any::TypeId
 impl<T> core::borrow::Borrow<T> for forkfs::SessionOperand<'a, S> where T: core::marker::Sized
-pub fn forkfs::SessionOperand::borrow(&self) -> &T
+pub fn forkfs::SessionOperand<'a, S>::borrow(&self) -> &T
 impl<T> core::borrow::BorrowMut<T> for forkfs::SessionOperand<'a, S> where T: core::marker::Sized
-pub fn forkfs::SessionOperand::borrow_mut(&mut self) -> &mut T
+pub fn forkfs::SessionOperand<'a, S>::borrow_mut(&mut self) -> &mut T
 impl<T> core::convert::From<T> for forkfs::SessionOperand<'a, S>
-pub fn forkfs::SessionOperand::from(t: T) -> T
+pub fn forkfs::SessionOperand<'a, S>::from(t: T) -> T
 pub fn forkfs::delete_sessions<S: core::convert::AsRef<str>>(sessions: forkfs::SessionOperand<'_, S>) -> error_stack::result::Result<(), forkfs::Error>
 pub fn forkfs::list_sessions() -> error_stack::result::Result<(), forkfs::Error>
 pub fn forkfs::run<T: core::convert::AsRef<std::ffi::os_str::OsStr>>(session: &str, command: &[T]) -> error_stack::result::Result<(), forkfs::Error>

@@ -7,9 +7,9 @@ use std::{
     process::Command,
 };
 
-use error_stack::{IntoReport, Result, ResultExt};
+use error_stack::{Result, ResultExt};
 use rustix::{
-    fs::{cwd, readlinkat},
+    fs::{readlinkat, CWD},
     io::Errno,
     process::{getuid, Uid},
     thread::{capabilities, set_thread_uid, CapabilityFlags},
@@ -85,30 +85,27 @@ fn validate_permissions(uid: Uid) -> Result<(), Error> {
         }
     }
 
-    let path = readlinkat(cwd(), "/proc/self/exe", Vec::new());
+    let path = readlinkat(CWD, "/proc/self/exe", Vec::new());
     let path = path.as_deref().map(CStr::to_string_lossy);
     let path = path.as_deref().ok().unwrap_or("<path-to-forkfs>");
 
-    #[allow(clippy::uninlined_format_args)]
-    Err(Error::SetupRequired)
-        .into_report()
-        .attach_printable(format!(
-            "Welcome to ForkFS!
+    Err(Error::SetupRequired).attach_printable(format!(
+        "Welcome to ForkFS!
 
 Under the hood, ForkFS is implemented as a wrapper around OverlayFS. As a
 consequence, elevated privileges are required and can be granted in one of
 three ways (ordered by recommendation):
 
 - $ sudo setcap \
-             cap_chown,cap_sys_chroot,cap_sys_admin,cap_dac_override,cap_fowner,cap_setpcap,\
-             cap_mknod,cap_lease,cap_setfcap+ep {0}
+         cap_chown,cap_sys_chroot,cap_sys_admin,cap_dac_override,cap_fowner,cap_setpcap,cap_mknod,\
+         cap_lease,cap_setfcap+ep {path}
 
   This grants `forkfs` precisely the capabilities it needs.
 
   cap_dac_override onwards are capabilities that are required for OverlayFS to
   be able to perform those actions.
 
-- $ sudo chown root {0}; sudo chmod u+s {0}
+- $ sudo chown root {path}; sudo chmod u+s {path}
 
   This transfers ownership of the `forkfs` binary to root and specifies that
   the binary should be executed as its owner (i.e. root).
@@ -125,6 +122,5 @@ three ways (ordered by recommendation):
 
 PS: if you've already seen this message, then you probably upgraded to a new
 version of ForkFS and will therefore need to rerun this setup.",
-            path,
-        ))
+    ))
 }

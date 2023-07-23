@@ -59,12 +59,9 @@ PS: you might also be interested in Firejail: <https://firejail.wordpress.com/>.
 Usage: forkfs <COMMAND>
 
 Commands:
-  run
-          Run commands inside the sandbox
-  sessions
-          Manage sessions
-  help
-          Print this message or the help of the given subcommand(s)
+  run       Run commands inside the sandbox
+  sessions  Manage sessions
+  help      Print this message or the help of the given subcommand(s)
 
 Options:
   -h, --help
@@ -88,14 +85,10 @@ want to delete all sessions to restore clean behavior in such cases.
 Usage: forkfs sessions <COMMAND>
 
 Commands:
-  list
-          List sessions
-  stop
-          Unmount active sessions
-  delete
-          Delete sessions
-  help
-          Print this message or the help of the given subcommand(s)
+  list    List sessions
+  stop    Unmount active sessions
+  delete  Delete sessions
+  help    Print this message or the help of the given subcommand(s)
 
 Options:
   -h, --help
