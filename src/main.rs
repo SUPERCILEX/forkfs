@@ -107,6 +107,9 @@ struct SessionCmd {
 }
 
 fn main() -> ExitCode {
+    #[cfg(not(debug_assertions))]
+    error_stack::Report::install_debug_hook::<std::panic::Location>(|_, _| {});
+
     let args = ForkFs::parse();
 
     match forkfs(args) {
