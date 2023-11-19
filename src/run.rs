@@ -48,7 +48,8 @@ fn run_command(args: &[impl AsRef<OsStr>], prev_uid: Uid) -> Result<(), Error> {
     if !prev_uid.is_root() {
         command.uid(prev_uid.as_raw());
     } else if let Some(uid) = env::var_os("SUDO_UID").as_ref().and_then(|s| s.to_str())
-        && let Ok(uid) = uid.parse() {
+        && let Ok(uid) = uid.parse()
+    {
         command.uid(uid);
     }
 

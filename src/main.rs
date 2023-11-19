@@ -161,6 +161,6 @@ mod cli_tests {
 
     #[test]
     fn help_for_review() {
-        supercilex_tests::help_for_review2(ForkFs::command());
+        supercilex_tests::help_for_review(ForkFs::command());
     }
 }
