@@ -6,10 +6,10 @@ pub forkfs::Error::NotRoot
 pub forkfs::Error::SessionNotFound
 pub forkfs::Error::SetupRequired
 impl core::error::Error for forkfs::Error
-impl core::fmt::Display for forkfs::Error
-pub fn forkfs::Error::fmt(&self, __formatter: &mut core::fmt::Formatter<'_>) -> core::fmt::Result
 impl core::fmt::Debug for forkfs::Error
 pub fn forkfs::Error::fmt(&self, f: &mut core::fmt::Formatter<'_>) -> core::fmt::Result
+impl core::fmt::Display for forkfs::Error
+pub fn forkfs::Error::fmt(&self, __formatter: &mut core::fmt::Formatter<'_>) -> core::fmt::Result
 impl core::marker::Send for forkfs::Error
 impl core::marker::Sync for forkfs::Error
 impl core::marker::Unpin for forkfs::Error
