@@ -96,14 +96,14 @@ mod path_undo {
         }
     }
 
-    impl<'a> AsRef<Path> for TmpPath<'a> {
-        fn as_ref(&self) -> &Path {
+    impl<'a> DerefMut for TmpPath<'a> {
+        fn deref_mut(&mut self) -> &mut Self::Target {
             self.0
         }
     }
 
-    impl<'a> DerefMut for TmpPath<'a> {
-        fn deref_mut(&mut self) -> &mut Self::Target {
+    impl<'a> AsRef<Path> for TmpPath<'a> {
+        fn as_ref(&self) -> &Path {
             self.0
         }
     }
