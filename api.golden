@@ -10,6 +10,7 @@ impl core::fmt::Debug for forkfs::Error
 pub fn forkfs::Error::fmt(&self, f: &mut core::fmt::Formatter<'_>) -> core::fmt::Result
 impl core::fmt::Display for forkfs::Error
 pub fn forkfs::Error::fmt(&self, __formatter: &mut core::fmt::Formatter<'_>) -> core::fmt::Result
+impl core::marker::Freeze for forkfs::Error
 impl core::marker::Send for forkfs::Error
 impl core::marker::Sync for forkfs::Error
 impl core::marker::Unpin for forkfs::Error
@@ -38,6 +39,7 @@ pub fn forkfs::Error::from(t: T) -> T
 pub enum forkfs::SessionOperand<'a, S: core::convert::AsRef<str>>
 pub forkfs::SessionOperand::All
 pub forkfs::SessionOperand::List(&'a [S])
+impl<'a, S> core::marker::Freeze for forkfs::SessionOperand<'a, S>
 impl<'a, S> core::marker::Send for forkfs::SessionOperand<'a, S> where S: core::marker::Sync
 impl<'a, S> core::marker::Sync for forkfs::SessionOperand<'a, S> where S: core::marker::Sync
 impl<'a, S> core::marker::Unpin for forkfs::SessionOperand<'a, S>
