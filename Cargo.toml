@@ -10,15 +10,15 @@ categories = ["command-line-utilities", "development-tools", "development-tools:
 license = "Apache-2.0"
 
 [dependencies]
-clap = { version = "4.5.7", features = ["derive", "wrap_help"] }
+clap = { version = "4.5.9", features = ["derive", "wrap_help"] }
 dirs = "5.0.1"
-error-stack = "0.4.1"
-fuc_engine = "2.1.0"
+error-stack = { version = "0.5.0", default-features = false, features = ["std"] }
+fuc_engine = "2.2.0"
 rustix = { version = "0.38.34", features = ["fs", "process", "thread", "linux_latest"] }
-thiserror = "1.0.61"
+thiserror = "1.0.62"
 
 [dev-dependencies]
-supercilex-tests = "0.4.5"
+supercilex-tests = "0.4.6"
 trycmd = "0.15.4"
 
 [profile.release]
