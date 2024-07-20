@@ -6,6 +6,8 @@ You can think of it as a lightweight container: programs still have access to yo
 (and can therefore jump out of the sandbox), but their disk changes are re-routed to special
 directories without changing the real file system.
 
+A brief technical overview of the project is available at https://alexsaveau.dev/blog/forkfs.
+
 ## Installation
 
 > Note: ForkFS is Linux-only.
