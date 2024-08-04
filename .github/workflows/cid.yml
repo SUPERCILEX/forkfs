@@ -92,5 +92,5 @@ jobs:
         with:
           repo_token: ${{ secrets.GITHUB_TOKEN }}
           file: target/${{ matrix.target }}/release/forkfs
-          asset_name: forkfs-${{ matrix.target }}
+          asset_name: ${{ matrix.target }}-forkfs
           tag: ${{ github.ref }}
