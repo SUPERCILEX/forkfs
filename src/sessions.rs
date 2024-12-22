@@ -11,13 +11,14 @@ use std::{
 
 use error_stack::{Result, ResultExt};
 use rustix::fs::{
-    change_mount, mount, recursive_bind_mount, statx, unmount, AtFlags, MountFlags,
-    MountPropagationFlags, StatxFlags, UnmountFlags, CWD,
+    AtFlags, CWD, MountFlags, MountPropagationFlags, StatxFlags, UnmountFlags, change_mount, mount,
+    recursive_bind_mount, statx, unmount,
 };
 
-use crate::{get_sessions_dir, path_undo::TmpPath, Error, IoErr};
+use crate::{Error, IoErr, get_sessions_dir, path_undo::TmpPath};
 
-pub enum Op<'a, S: AsRef<str>> {
+#[derive(Copy, Clone)]
+pub enum Op<'a, S> {
     All,
     List(&'a [S]),
 }

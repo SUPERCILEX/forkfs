@@ -1,6 +1,5 @@
 #![feature(let_chains)]
 #![feature(dir_entry_ext2)]
-#![allow(clippy::missing_errors_doc)]
 
 use std::{
     fmt::{Debug, Display},
@@ -11,7 +10,7 @@ use std::{
 use error_stack::{Result, ResultExt};
 pub use run::run;
 pub use sessions::{
-    delete as delete_sessions, list as list_sessions, stop as stop_sessions, Op as SessionOperand,
+    Op as SessionOperand, delete as delete_sessions, list as list_sessions, stop as stop_sessions,
 };
 
 mod run;
@@ -88,7 +87,7 @@ mod path_undo {
         }
     }
 
-    impl<'a> Deref for TmpPath<'a> {
+    impl Deref for TmpPath<'_> {
         type Target = PathBuf;
 
         fn deref(&self) -> &Self::Target {
@@ -96,25 +95,25 @@ mod path_undo {
         }
     }
 
-    impl<'a> DerefMut for TmpPath<'a> {
+    impl DerefMut for TmpPath<'_> {
         fn deref_mut(&mut self) -> &mut Self::Target {
             self.0
         }
     }
 
-    impl<'a> AsRef<Path> for TmpPath<'a> {
+    impl AsRef<Path> for TmpPath<'_> {
         fn as_ref(&self) -> &Path {
             self.0
         }
     }
 
-    impl<'a> Debug for TmpPath<'a> {
+    impl Debug for TmpPath<'_> {
         fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
             Debug::fmt(&**self, f)
         }
     }
 
-    impl<'a> Drop for TmpPath<'a> {
+    impl Drop for TmpPath<'_> {
         fn drop(&mut self) {
             self.pop();
         }

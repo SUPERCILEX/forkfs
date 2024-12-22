@@ -9,13 +9,13 @@ use std::{
 
 use error_stack::{Result, ResultExt};
 use rustix::{
-    fs::{readlinkat, CWD},
+    fs::{CWD, readlinkat},
     io::Errno,
-    process::{getuid, Uid},
-    thread::{capabilities, set_thread_uid, CapabilityFlags},
+    process::{Uid, getuid},
+    thread::{CapabilityFlags, capabilities, set_thread_uid},
 };
 
-use crate::{get_sessions_dir, sessions::maybe_create_session, Error, IoErr};
+use crate::{Error, IoErr, get_sessions_dir, sessions::maybe_create_session};
 
 pub fn run<T: AsRef<OsStr>>(session: &str, command: &[T]) -> Result<(), Error> {
     let uid = getuid();

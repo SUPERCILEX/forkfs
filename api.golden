@@ -26,19 +26,22 @@ pub fn forkfs::Error::try_from(value: U) -> core::result::Result<T, <T as core::
 impl<T, U> core::convert::TryInto<U> for forkfs::Error where U: core::convert::TryFrom<T>
 pub type forkfs::Error::Error = <U as core::convert::TryFrom<T>>::Error
 pub fn forkfs::Error::try_into(self) -> core::result::Result<U, <U as core::convert::TryFrom<T>>::Error>
-impl<T> alloc::string::ToString for forkfs::Error where T: core::fmt::Display + core::marker::Sized
+impl<T> alloc::string::ToString for forkfs::Error where T: core::fmt::Display + ?core::marker::Sized
 pub fn forkfs::Error::to_string(&self) -> alloc::string::String
-impl<T> core::any::Any for forkfs::Error where T: 'static + core::marker::Sized
+impl<T> core::any::Any for forkfs::Error where T: 'static + ?core::marker::Sized
 pub fn forkfs::Error::type_id(&self) -> core::any::TypeId
-impl<T> core::borrow::Borrow<T> for forkfs::Error where T: core::marker::Sized
+impl<T> core::borrow::Borrow<T> for forkfs::Error where T: ?core::marker::Sized
 pub fn forkfs::Error::borrow(&self) -> &T
-impl<T> core::borrow::BorrowMut<T> for forkfs::Error where T: core::marker::Sized
+impl<T> core::borrow::BorrowMut<T> for forkfs::Error where T: ?core::marker::Sized
 pub fn forkfs::Error::borrow_mut(&mut self) -> &mut T
 impl<T> core::convert::From<T> for forkfs::Error
 pub fn forkfs::Error::from(t: T) -> T
-pub enum forkfs::SessionOperand<'a, S: core::convert::AsRef<str>>
+pub enum forkfs::SessionOperand<'a, S>
 pub forkfs::SessionOperand::All
 pub forkfs::SessionOperand::List(&'a [S])
+impl<'a, S: core::clone::Clone> core::clone::Clone for forkfs::SessionOperand<'a, S>
+pub fn forkfs::SessionOperand<'a, S>::clone(&self) -> forkfs::SessionOperand<'a, S>
+impl<'a, S: core::marker::Copy> core::marker::Copy for forkfs::SessionOperand<'a, S>
 impl<'a, S> core::marker::Freeze for forkfs::SessionOperand<'a, S>
 impl<'a, S> core::marker::Send for forkfs::SessionOperand<'a, S> where S: core::marker::Sync
 impl<'a, S> core::marker::Sync for forkfs::SessionOperand<'a, S> where S: core::marker::Sync
@@ -53,12 +56,18 @@ pub fn forkfs::SessionOperand<'a, S>::try_from(value: U) -> core::result::Result
 impl<T, U> core::convert::TryInto<U> for forkfs::SessionOperand<'a, S> where U: core::convert::TryFrom<T>
 pub type forkfs::SessionOperand<'a, S>::Error = <U as core::convert::TryFrom<T>>::Error
 pub fn forkfs::SessionOperand<'a, S>::try_into(self) -> core::result::Result<U, <U as core::convert::TryFrom<T>>::Error>
-impl<T> core::any::Any for forkfs::SessionOperand<'a, S> where T: 'static + core::marker::Sized
+impl<T> alloc::borrow::ToOwned for forkfs::SessionOperand<'a, S> where T: core::clone::Clone
+pub type forkfs::SessionOperand<'a, S>::Owned = T
+pub fn forkfs::SessionOperand<'a, S>::clone_into(&self, target: &mut T)
+pub fn forkfs::SessionOperand<'a, S>::to_owned(&self) -> T
+impl<T> core::any::Any for forkfs::SessionOperand<'a, S> where T: 'static + ?core::marker::Sized
 pub fn forkfs::SessionOperand<'a, S>::type_id(&self) -> core::any::TypeId
-impl<T> core::borrow::Borrow<T> for forkfs::SessionOperand<'a, S> where T: core::marker::Sized
+impl<T> core::borrow::Borrow<T> for forkfs::SessionOperand<'a, S> where T: ?core::marker::Sized
 pub fn forkfs::SessionOperand<'a, S>::borrow(&self) -> &T
-impl<T> core::borrow::BorrowMut<T> for forkfs::SessionOperand<'a, S> where T: core::marker::Sized
+impl<T> core::borrow::BorrowMut<T> for forkfs::SessionOperand<'a, S> where T: ?core::marker::Sized
 pub fn forkfs::SessionOperand<'a, S>::borrow_mut(&mut self) -> &mut T
+impl<T> core::clone::CloneToUninit for forkfs::SessionOperand<'a, S> where T: core::clone::Clone
+pub unsafe fn forkfs::SessionOperand<'a, S>::clone_to_uninit(&self, dst: *mut u8)
 impl<T> core::convert::From<T> for forkfs::SessionOperand<'a, S>
 pub fn forkfs::SessionOperand<'a, S>::from(t: T) -> T
 pub fn forkfs::delete_sessions<S: core::convert::AsRef<str>>(sessions: forkfs::SessionOperand<'_, S>) -> error_stack::result::Result<(), forkfs::Error>
