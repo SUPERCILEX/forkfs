@@ -2,7 +2,7 @@
 name = "forkfs"
 version = "0.2.8"
 authors = ["Alex Saveau <saveau.alexandre@gmail.com>"]
-edition = "2021"
+edition = "2024"
 description = "ForkFS allows you to sandbox a process's changes to your file system."
 repository = "https://github.com/SUPERCILEX/forkfs"
 keywords = ["tools", "isolate", "files"]
@@ -18,7 +18,7 @@ rustix = { version = "0.38.42", features = ["fs", "process", "thread", "linux_la
 thiserror = "2.0.9"
 
 [dev-dependencies]
-supercilex-tests = "0.4.12"
+supercilex-tests = "0.4.13"
 trycmd = "0.15.8"
 
 [profile.release]
