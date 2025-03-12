@@ -10,16 +10,16 @@ categories = ["command-line-utilities", "development-tools", "development-tools:
 license = "Apache-2.0"
 
 [dependencies]
-clap = { version = "4.5.23", features = ["derive", "wrap_help"] }
-dirs = "5.0.1"
+clap = { version = "4.5.32", features = ["derive", "wrap_help"] }
+dirs = "6.0.0"
 error-stack = { version = "0.5.0", default-features = false, features = ["std"] }
-fuc_engine = "2.2.0"
-rustix = { version = "0.38.42", features = ["fs", "process", "thread", "linux_latest"] }
-thiserror = "2.0.9"
+fuc_engine = "3.0.1"
+rustix = { version = "1.0.2", features = ["fs", "process", "thread", "mount", "linux_latest"] }
+thiserror = "2.0.12"
 
 [dev-dependencies]
-supercilex-tests = "0.4.13"
-trycmd = "0.15.8"
+supercilex-tests = "0.4.16"
+trycmd = "0.15.9"
 
 [profile.release]
 lto = true

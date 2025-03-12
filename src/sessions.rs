@@ -10,9 +10,12 @@ use std::{
 };
 
 use error_stack::{Result, ResultExt};
-use rustix::fs::{
-    AtFlags, CWD, MountFlags, MountPropagationFlags, StatxFlags, UnmountFlags, change_mount, mount,
-    recursive_bind_mount, statx, unmount,
+use rustix::{
+    fs::{AtFlags, CWD, StatxFlags, statx},
+    mount::{
+        MountFlags, MountPropagationFlags, UnmountFlags, mount, mount_bind_recursive, mount_change,
+        unmount,
+    },
 };
 
 use crate::{Error, IoErr, get_sessions_dir, path_undo::TmpPath};
@@ -106,11 +109,11 @@ fn start_session(dir: &mut PathBuf) -> Result<(), Error> {
         (c"/tmp", "tmp"),
     ] {
         let target = TmpPath::new(&mut merged, target);
-        recursive_bind_mount(source, &*target)
+        mount_bind_recursive(source, &*target)
             .map_io_err_lazy(|| format!("Failed to bind mount directory {target:?}"))?;
-        change_mount(
+        mount_change(
             &*target,
-            MountPropagationFlags::SLAVE | MountPropagationFlags::REC,
+            MountPropagationFlags::DOWNSTREAM | MountPropagationFlags::REC,
         )
         .map_io_err_lazy(|| format!("Failed to enslave mount {target:?}"))?;
     }
